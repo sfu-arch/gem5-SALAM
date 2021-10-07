@@ -240,7 +240,11 @@ SALAM::Instruction::launch()
     // std::cerr << "hasFunctionalUnit : " << hasFunctionalUnit() << "\n";
     
     if (hasFunctionalUnit()) {
-        if(!hw_interface->availableFunctionalUnit(getFunctionalUnit())) return false;
+        if(!hw_interface->availableFunctionalUnit(getFunctionalUnit())) {
+            return false;
+        } else {
+            // 
+        }
     }
     launched = true;
     if (getCycleCount() == 0) { // Instruction ready to be committed
@@ -284,6 +288,11 @@ SALAM::Instruction::commit()
         committed = true;
         DPRINTF(Runtime, "||==Return: %s\n", committed ? "true" : "false");
         DPRINTF(Runtime, "||==commit================\n");
+        if (hasFunctionalUnit()) {
+            hw_interface->clearFunctionalUnit(getFunctionalUnit());
+        } else {
+            // 
+        }
         return true;
     } else {
 
