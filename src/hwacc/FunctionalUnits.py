@@ -8,7 +8,7 @@ class FunctionalUnits(SimObject):
 	# SimObject type
 	type = 'FunctionalUnits'
 	# gem5-SALAM attached header
-	cxx_header = "src/hwacc/HWModeling/src/functional_units.hh"
+	cxx_header = "hwacc/HWModeling/src/functional_units.hh"
 
 	float_divider = Param.FloatDivider(Parent.any, "float_divider functional unit SimObject.")
 	float_multiplier = Param.FloatMultiplier(Parent.any, "float_multiplier functional unit SimObject.")
@@ -95,7 +95,7 @@ class DoubleMultiplier(SimObject):
 	# SimObject type
 	type = 'DoubleMultiplier'
 	# gem5-SALAM attached header
-	cxx_header = "src/hwacc/HWModeling/generated/functionalunits/double_multiplier.hh"
+	cxx_header = "hwacc/HWModeling/generated/functionalunits/double_multiplier.hh"
 	#HW Params
 	alias = Param.String("double_multiplier", "Default values set from double_multiplier.yml")
 	stages = Param.UInt32(3, "Default values set from double_multiplier.yml")
@@ -129,7 +129,7 @@ class FloatAdder(SimObject):
 	# SimObject type
 	type = 'FloatAdder'
 	# gem5-SALAM attached header
-	cxx_header = "src/hwacc/HWModeling/generated/functionalunits/float_adder.hh"
+	cxx_header = "hwacc/HWModeling/generated/functionalunits/bit_register.hh"
 	#HW Params
 	alias = Param.String("float_adder", "Default values set from float_adder.yml")
 	stages = Param.UInt32(3, "Default values set from float_adder.yml")
@@ -163,7 +163,7 @@ class BitwiseOperations(SimObject):
 	# SimObject type
 	type = 'BitwiseOperations'
 	# gem5-SALAM attached header
-	cxx_header = "src/hwacc/HWModeling/generated/functionalunits/bitwise_operations.hh"
+	cxx_header = "hwacc/HWModeling/generated/functionalunits/bitwise_operations.hh"
 	#HW Params
 	alias = Param.String("bitwise_operations", "Default values set from bitwise_operations.yml")
 	stages = Param.UInt32(1, "Default values set from bitwise_operations.yml")
@@ -193,11 +193,79 @@ class BitwiseOperations(SimObject):
 	area = Param.UInt32(5.981433, "Default values set from bitwise_operations.yml")
 	path_delay = Param.UInt32(1.75, "Default values set from bitwise_operations.yml")
 
+class DoubleAdder(SimObject):
+	# SimObject type
+	type = 'DoubleAdder'
+	# gem5-SALAM attached header
+	cxx_header = "src/hwacc/HWModeling/generated/functionalunits/double_adder.hh"
+	#HW Params
+	alias = Param.String("double_adder", "Default values set from double_adder.yml")
+	stages = Param.UInt32(3, "Default values set from double_adder.yml")
+	cycles = Param.UInt32(5, "Default values set from double_adder.yml")
+	enum_value = Param.UInt32(6, "Default values set from double_adder.yml")
+	int_size = Param.String("none", "Default values set from double_adder.yml")
+	int_sign = Param.String("none", "Default values set from double_adder.yml")
+	int_apmode = Param.Bool(False, "Default values set from double_adder.yml")
+	fp_size = Param.String("double", "Default values set from double_adder.yml")
+	fp_sign = Param.String("any", "Default values set from double_adder.yml")
+	fp_apmode = Param.Bool(True, "Default values set from double_adder.yml")
+	ptr_size = Param.String("none", "Default values set from double_adder.yml")
+	ptr_sign = Param.String("none", "Default values set from double_adder.yml")
+	ptr_apmode = Param.Bool(False, "Default values set from double_adder.yml")
+	limit = Param.UInt32(0, "Default values set from double_adder.yml")
+	#Power Params
+	power_units = Param.String("mW", "Default values set from double_adder.yml")
+	energy_units = Param.String("pJ", "Default values set from double_adder.yml")
+	time_units = Param.String("ns", "Default values set from double_adder.yml")
+	area_units = Param.String("um^2", "Default values set from double_adder.yml")
+	fu_latency = Param.UInt32(5, "Default values set from double_adder.yml")
+	internal_power = Param.UInt32(0.009743773, "Default values set from double_adder.yml")
+	switch_power = Param.UInt32(0.007400587, "Default values set from double_adder.yml")
+	dynamic_power = Param.UInt32(0.001800732, "Default values set from double_adder.yml")
+	dynamic_energy = Param.UInt32(0.009003937, "Default values set from double_adder.yml")
+	leakage_power = Param.UInt32(7.395312e-05, "Default values set from double_adder.yml")
+	area = Param.UInt32(5.981433, "Default values set from double_adder.yml")
+	path_delay = Param.UInt32(1.75, "Default values set from double_adder.yml")
+
+class FloatDivider(SimObject):
+	# SimObject type
+	type = 'FloatDivider'
+	# gem5-SALAM attached header
+	cxx_header = "src/hwacc/HWModeling/generated/functionalunits/float_divider.hh"
+	#HW Params
+	alias = Param.String("float_divider", "Default values set from float_divider.yml")
+	stages = Param.UInt32(3, "Default values set from float_divider.yml")
+	cycles = Param.UInt32(16, "Default values set from float_divider.yml")
+	enum_value = Param.UInt32(8, "Default values set from float_divider.yml")
+	int_size = Param.String("none", "Default values set from float_divider.yml")
+	int_sign = Param.String("none", "Default values set from float_divider.yml")
+	int_apmode = Param.Bool(False, "Default values set from float_divider.yml")
+	fp_size = Param.String("single", "Default values set from float_divider.yml")
+	fp_sign = Param.String("any", "Default values set from float_divider.yml")
+	fp_apmode = Param.Bool(True, "Default values set from float_divider.yml")
+	ptr_size = Param.String("none", "Default values set from float_divider.yml")
+	ptr_sign = Param.String("none", "Default values set from float_divider.yml")
+	ptr_apmode = Param.Bool(False, "Default values set from float_divider.yml")
+	limit = Param.UInt32(0, "Default values set from float_divider.yml")
+	#Power Params
+	power_units = Param.String("mW", "Default values set from float_divider.yml")
+	energy_units = Param.String("pJ", "Default values set from float_divider.yml")
+	time_units = Param.String("ns", "Default values set from float_divider.yml")
+	area_units = Param.String("um^2", "Default values set from float_divider.yml")
+	fu_latency = Param.UInt32(5, "Default values set from float_divider.yml")
+	internal_power = Param.UInt32(0.009743773, "Default values set from float_divider.yml")
+	switch_power = Param.UInt32(0.007400587, "Default values set from float_divider.yml")
+	dynamic_power = Param.UInt32(0.001800732, "Default values set from float_divider.yml")
+	dynamic_energy = Param.UInt32(0.009003937, "Default values set from float_divider.yml")
+	leakage_power = Param.UInt32(7.395312e-05, "Default values set from float_divider.yml")
+	area = Param.UInt32(5.981433, "Default values set from float_divider.yml")
+	path_delay = Param.UInt32(1.75, "Default values set from float_divider.yml")
+
 class BitShifter(SimObject):
 	# SimObject type
 	type = 'BitShifter'
 	# gem5-SALAM attached header
-	cxx_header = "src/hwacc/HWModeling/generated/functionalunits/bit_shifter.hh"
+	cxx_header = "hwacc/HWModeling/generated/functionalunits/bit_shifter.hh"
 	#HW Params
 	alias = Param.String("bit_shifter", "Default values set from bit_shifter.yml")
 	stages = Param.UInt32(1, "Default values set from bit_shifter.yml")
@@ -226,6 +294,40 @@ class BitShifter(SimObject):
 	leakage_power = Param.UInt32(7.395312e-05, "Default values set from bit_shifter.yml")
 	area = Param.UInt32(5.981433, "Default values set from bit_shifter.yml")
 	path_delay = Param.UInt32(1.75, "Default values set from bit_shifter.yml")
+
+class IntegerMultiplier(SimObject):
+	# SimObject type
+	type = 'IntegerMultiplier'
+	# gem5-SALAM attached header
+	cxx_header = "hwacc/HWModeling/generated/functionalunits/integer_multiplier.hh"
+	#HW Params
+	alias = Param.String("integer_multiplier", "Default values set from integer_multiplier.yml")
+	stages = Param.UInt32(1, "Default values set from integer_multiplier.yml")
+	cycles = Param.UInt32(1, "Default values set from integer_multiplier.yml")
+	enum_value = Param.UInt32(2, "Default values set from integer_multiplier.yml")
+	int_size = Param.String("any", "Default values set from integer_multiplier.yml")
+	int_sign = Param.String("any", "Default values set from integer_multiplier.yml")
+	int_apmode = Param.Bool(True, "Default values set from integer_multiplier.yml")
+	fp_size = Param.String("none", "Default values set from integer_multiplier.yml")
+	fp_sign = Param.String("none", "Default values set from integer_multiplier.yml")
+	fp_apmode = Param.Bool(False, "Default values set from integer_multiplier.yml")
+	ptr_size = Param.String("none", "Default values set from integer_multiplier.yml")
+	ptr_sign = Param.String("none", "Default values set from integer_multiplier.yml")
+	ptr_apmode = Param.Bool(False, "Default values set from integer_multiplier.yml")
+	limit = Param.UInt32(0, "Default values set from integer_multiplier.yml")
+	#Power Params
+	power_units = Param.String("mW", "Default values set from integer_multiplier.yml")
+	energy_units = Param.String("pJ", "Default values set from integer_multiplier.yml")
+	time_units = Param.String("ns", "Default values set from integer_multiplier.yml")
+	area_units = Param.String("um^2", "Default values set from integer_multiplier.yml")
+	fu_latency = Param.UInt32(5, "Default values set from integer_multiplier.yml")
+	internal_power = Param.UInt32(0.009743773, "Default values set from integer_multiplier.yml")
+	switch_power = Param.UInt32(0.007400587, "Default values set from integer_multiplier.yml")
+	dynamic_power = Param.UInt32(0.001800732, "Default values set from integer_multiplier.yml")
+	dynamic_energy = Param.UInt32(0.009003937, "Default values set from integer_multiplier.yml")
+	leakage_power = Param.UInt32(7.395312e-05, "Default values set from integer_multiplier.yml")
+	area = Param.UInt32(5.981433, "Default values set from integer_multiplier.yml")
+	path_delay = Param.UInt32(1.75, "Default values set from integer_multiplier.yml")
 
 class IntegerAdder(SimObject):
 	# SimObject type
@@ -261,79 +363,11 @@ class IntegerAdder(SimObject):
 	area = Param.UInt32(5.981433, "Default values set from integer_adder.yml")
 	path_delay = Param.UInt32(1.75, "Default values set from integer_adder.yml")
 
-class BitRegister(SimObject):
-	# SimObject type
-	type = 'BitRegister'
-	# gem5-SALAM attached header
-	cxx_header = "src/hwacc/HWModeling/generated/functionalunits/bit_register.hh"
-	#HW Params
-	alias = Param.String("bit_register", "Default values set from bit_register.yml")
-	stages = Param.UInt32(0, "Default values set from bit_register.yml")
-	cycles = Param.UInt32(0, "Default values set from bit_register.yml")
-	enum_value = Param.UInt32(15, "Default values set from bit_register.yml")
-	int_size = Param.String("any", "Default values set from bit_register.yml")
-	int_sign = Param.String("any", "Default values set from bit_register.yml")
-	int_apmode = Param.Bool(True, "Default values set from bit_register.yml")
-	fp_size = Param.String("any", "Default values set from bit_register.yml")
-	fp_sign = Param.String("any", "Default values set from bit_register.yml")
-	fp_apmode = Param.Bool(True, "Default values set from bit_register.yml")
-	ptr_size = Param.String("any", "Default values set from bit_register.yml")
-	ptr_sign = Param.String("any", "Default values set from bit_register.yml")
-	ptr_apmode = Param.Bool(True, "Default values set from bit_register.yml")
-	limit = Param.UInt32(0, "Default values set from bit_register.yml")
-	#Power Params
-	power_units = Param.String("mW", "Default values set from bit_register.yml")
-	energy_units = Param.String("pJ", "Default values set from bit_register.yml")
-	time_units = Param.String("ns", "Default values set from bit_register.yml")
-	area_units = Param.String("um^2", "Default values set from bit_register.yml")
-	fu_latency = Param.UInt32(5, "Default values set from bit_register.yml")
-	internal_power = Param.UInt32(0.009743773, "Default values set from bit_register.yml")
-	switch_power = Param.UInt32(0.007400587, "Default values set from bit_register.yml")
-	dynamic_power = Param.UInt32(0.001800732, "Default values set from bit_register.yml")
-	dynamic_energy = Param.UInt32(0.009003937, "Default values set from bit_register.yml")
-	leakage_power = Param.UInt32(7.395312e-05, "Default values set from bit_register.yml")
-	area = Param.UInt32(5.981433, "Default values set from bit_register.yml")
-	path_delay = Param.UInt32(1.75, "Default values set from bit_register.yml")
-
-class IntegerMultiplier(SimObject):
-	# SimObject type
-	type = 'IntegerMultiplier'
-	# gem5-SALAM attached header
-	cxx_header = "src/hwacc/HWModeling/generated/functionalunits/integer_multiplier.hh"
-	#HW Params
-	alias = Param.String("integer_multiplier", "Default values set from integer_multiplier.yml")
-	stages = Param.UInt32(1, "Default values set from integer_multiplier.yml")
-	cycles = Param.UInt32(1, "Default values set from integer_multiplier.yml")
-	enum_value = Param.UInt32(2, "Default values set from integer_multiplier.yml")
-	int_size = Param.String("any", "Default values set from integer_multiplier.yml")
-	int_sign = Param.String("any", "Default values set from integer_multiplier.yml")
-	int_apmode = Param.Bool(True, "Default values set from integer_multiplier.yml")
-	fp_size = Param.String("none", "Default values set from integer_multiplier.yml")
-	fp_sign = Param.String("none", "Default values set from integer_multiplier.yml")
-	fp_apmode = Param.Bool(False, "Default values set from integer_multiplier.yml")
-	ptr_size = Param.String("none", "Default values set from integer_multiplier.yml")
-	ptr_sign = Param.String("none", "Default values set from integer_multiplier.yml")
-	ptr_apmode = Param.Bool(False, "Default values set from integer_multiplier.yml")
-	limit = Param.UInt32(0, "Default values set from integer_multiplier.yml")
-	#Power Params
-	power_units = Param.String("mW", "Default values set from integer_multiplier.yml")
-	energy_units = Param.String("pJ", "Default values set from integer_multiplier.yml")
-	time_units = Param.String("ns", "Default values set from integer_multiplier.yml")
-	area_units = Param.String("um^2", "Default values set from integer_multiplier.yml")
-	fu_latency = Param.UInt32(5, "Default values set from integer_multiplier.yml")
-	internal_power = Param.UInt32(0.009743773, "Default values set from integer_multiplier.yml")
-	switch_power = Param.UInt32(0.007400587, "Default values set from integer_multiplier.yml")
-	dynamic_power = Param.UInt32(0.001800732, "Default values set from integer_multiplier.yml")
-	dynamic_energy = Param.UInt32(0.009003937, "Default values set from integer_multiplier.yml")
-	leakage_power = Param.UInt32(7.395312e-05, "Default values set from integer_multiplier.yml")
-	area = Param.UInt32(5.981433, "Default values set from integer_multiplier.yml")
-	path_delay = Param.UInt32(1.75, "Default values set from integer_multiplier.yml")
-
 class DoubleDivider(SimObject):
 	# SimObject type
 	type = 'DoubleDivider'
 	# gem5-SALAM attached header
-	cxx_header = "src/hwacc/HWModeling/generated/functionalunits/double_divider.hh"
+	cxx_header = "hwacc/HWModeling/generated/functionalunits/double_divider.hh"
 	#HW Params
 	alias = Param.String("double_divider", "Default values set from double_divider.yml")
 	stages = Param.UInt32(3, "Default values set from double_divider.yml")
@@ -363,37 +397,71 @@ class DoubleDivider(SimObject):
 	area = Param.UInt32(5.981433, "Default values set from double_divider.yml")
 	path_delay = Param.UInt32(1.75, "Default values set from double_divider.yml")
 
-class DoubleAdder(SimObject):
+class FloatAdder(SimObject):
 	# SimObject type
-	type = 'DoubleAdder'
+	type = 'FloatAdder'
 	# gem5-SALAM attached header
-	cxx_header = "src/hwacc/HWModeling/generated/functionalunits/double_adder.hh"
+	cxx_header = "hwacc/HWModeling/generated/functionalunits/float_adder.hh"
 	#HW Params
-	alias = Param.String("double_adder", "Default values set from double_adder.yml")
-	stages = Param.UInt32(3, "Default values set from double_adder.yml")
-	cycles = Param.UInt32(5, "Default values set from double_adder.yml")
-	enum_value = Param.UInt32(6, "Default values set from double_adder.yml")
-	int_size = Param.String("none", "Default values set from double_adder.yml")
-	int_sign = Param.String("none", "Default values set from double_adder.yml")
-	int_apmode = Param.Bool(False, "Default values set from double_adder.yml")
-	fp_size = Param.String("double", "Default values set from double_adder.yml")
-	fp_sign = Param.String("any", "Default values set from double_adder.yml")
-	fp_apmode = Param.Bool(True, "Default values set from double_adder.yml")
-	ptr_size = Param.String("none", "Default values set from double_adder.yml")
-	ptr_sign = Param.String("none", "Default values set from double_adder.yml")
-	ptr_apmode = Param.Bool(False, "Default values set from double_adder.yml")
-	limit = Param.UInt32(0, "Default values set from double_adder.yml")
+	alias = Param.String("float_adder", "Default values set from float_adder.yml")
+	stages = Param.UInt32(3, "Default values set from float_adder.yml")
+	cycles = Param.UInt32(5, "Default values set from float_adder.yml")
+	enum_value = Param.UInt32(5, "Default values set from float_adder.yml")
+	int_size = Param.String("none", "Default values set from float_adder.yml")
+	int_sign = Param.String("none", "Default values set from float_adder.yml")
+	int_apmode = Param.Bool(False, "Default values set from float_adder.yml")
+	fp_size = Param.String("single", "Default values set from float_adder.yml")
+	fp_sign = Param.String("any", "Default values set from float_adder.yml")
+	fp_apmode = Param.Bool(True, "Default values set from float_adder.yml")
+	ptr_size = Param.String("none", "Default values set from float_adder.yml")
+	ptr_sign = Param.String("none", "Default values set from float_adder.yml")
+	ptr_apmode = Param.Bool(False, "Default values set from float_adder.yml")
+	limit = Param.UInt32(0, "Default values set from float_adder.yml")
 	#Power Params
-	power_units = Param.String("mW", "Default values set from double_adder.yml")
-	energy_units = Param.String("pJ", "Default values set from double_adder.yml")
-	time_units = Param.String("ns", "Default values set from double_adder.yml")
-	area_units = Param.String("um^2", "Default values set from double_adder.yml")
-	fu_latency = Param.UInt32(5, "Default values set from double_adder.yml")
-	internal_power = Param.UInt32(0.009743773, "Default values set from double_adder.yml")
-	switch_power = Param.UInt32(0.007400587, "Default values set from double_adder.yml")
-	dynamic_power = Param.UInt32(0.001800732, "Default values set from double_adder.yml")
-	dynamic_energy = Param.UInt32(0.009003937, "Default values set from double_adder.yml")
-	leakage_power = Param.UInt32(7.395312e-05, "Default values set from double_adder.yml")
-	area = Param.UInt32(5.981433, "Default values set from double_adder.yml")
-	path_delay = Param.UInt32(1.75, "Default values set from double_adder.yml")
+	power_units = Param.String("mW", "Default values set from float_adder.yml")
+	energy_units = Param.String("pJ", "Default values set from float_adder.yml")
+	time_units = Param.String("ns", "Default values set from float_adder.yml")
+	area_units = Param.String("um^2", "Default values set from float_adder.yml")
+	fu_latency = Param.UInt32(5, "Default values set from float_adder.yml")
+	internal_power = Param.UInt32(0.009743773, "Default values set from float_adder.yml")
+	switch_power = Param.UInt32(0.007400587, "Default values set from float_adder.yml")
+	dynamic_power = Param.UInt32(0.001800732, "Default values set from float_adder.yml")
+	dynamic_energy = Param.UInt32(0.009003937, "Default values set from float_adder.yml")
+	leakage_power = Param.UInt32(7.395312e-05, "Default values set from float_adder.yml")
+	area = Param.UInt32(5.981433, "Default values set from float_adder.yml")
+	path_delay = Param.UInt32(1.75, "Default values set from float_adder.yml")
+
+class FloatMultiplier(SimObject):
+	# SimObject type
+	type = 'FloatMultiplier'
+	# gem5-SALAM attached header
+	cxx_header = "src/hwacc/HWModeling/generated/functionalunits/float_multiplier.hh"
+	#HW Params
+	alias = Param.String("float_multiplier", "Default values set from float_multiplier.yml")
+	stages = Param.UInt32(3, "Default values set from float_multiplier.yml")
+	cycles = Param.UInt32(5, "Default values set from float_multiplier.yml")
+	enum_value = Param.UInt32(7, "Default values set from float_multiplier.yml")
+	int_size = Param.String("none", "Default values set from float_multiplier.yml")
+	int_sign = Param.String("none", "Default values set from float_multiplier.yml")
+	int_apmode = Param.Bool(False, "Default values set from float_multiplier.yml")
+	fp_size = Param.String("single", "Default values set from float_multiplier.yml")
+	fp_sign = Param.String("any", "Default values set from float_multiplier.yml")
+	fp_apmode = Param.Bool(True, "Default values set from float_multiplier.yml")
+	ptr_size = Param.String("none", "Default values set from float_multiplier.yml")
+	ptr_sign = Param.String("none", "Default values set from float_multiplier.yml")
+	ptr_apmode = Param.Bool(False, "Default values set from float_multiplier.yml")
+	limit = Param.UInt32(0, "Default values set from float_multiplier.yml")
+	#Power Params
+	power_units = Param.String("mW", "Default values set from float_multiplier.yml")
+	energy_units = Param.String("pJ", "Default values set from float_multiplier.yml")
+	time_units = Param.String("ns", "Default values set from float_multiplier.yml")
+	area_units = Param.String("um^2", "Default values set from float_multiplier.yml")
+	fu_latency = Param.UInt32(5, "Default values set from float_multiplier.yml")
+	internal_power = Param.UInt32(0.009743773, "Default values set from float_multiplier.yml")
+	switch_power = Param.UInt32(0.007400587, "Default values set from float_multiplier.yml")
+	dynamic_power = Param.UInt32(0.001800732, "Default values set from float_multiplier.yml")
+	dynamic_energy = Param.UInt32(0.009003937, "Default values set from float_multiplier.yml")
+	leakage_power = Param.UInt32(7.395312e-05, "Default values set from float_multiplier.yml")
+	area = Param.UInt32(5.981433, "Default values set from float_multiplier.yml")
+	path_delay = Param.UInt32(1.75, "Default values set from float_multiplier.yml")
 
