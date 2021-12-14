@@ -142,7 +142,7 @@ CommInterface::recvPacket(PacketPtr pkt) {
         pkt->writeData(readReq->buffer + (pkt->req->getPaddr() - readReq->beginAddr));
         if (debug()) DPRINTF(CommInterface, "Read:%s\n", readReq->printBuffer());
         for (int i = pkt->req->getPaddr() - readReq->beginAddr;
-             i < pkt->req->getPaddr() - readReq->beginAddr + pkt->getSize(); i++)
+             i < pkt->req->getPaddr() - readReq->beginAddr + pkt->getSize(); i++)\
         {
             readReq->readsDone[i] = true;
         }
@@ -683,15 +683,12 @@ CommInterface::tryRead(RegPort * port) {
     readReq->pkt = pkt;
     readReq->currentReadAddr += size;
     readReq->readLeft -= size;
+    if (readReq->readLeft <= 0) readReq->needToRead = false;
     port->sendPacket(pkt);
 
-    
-
     if (!(readReq->readLeft > 0)) {
-        readReq->needToRead = false;
         if (!tickEvent.scheduled()) {
             schedule(tickEvent, curTick() + processDelay);
-            //schedule(tickEvent, nextCycle());
         }
     }
 }
@@ -725,11 +722,10 @@ CommInterface::tryWrite(RegPort * port) {
     writeReq->pkt = pkt;
     writeReq->currentWriteAddr += size;
     writeReq->writeLeft -= size;
+    if (writeReq->writeLeft <= 0) writeReq->needToWrite = false;
     port->sendPacket(pkt);
 
     if (!(writeReq->writeLeft > 0)) {
-        
-        writeReq->needToWrite = false;
         if (!tickEvent.scheduled()) {
             schedule(tickEvent, curTick() + processDelay);
         }
@@ -783,7 +779,6 @@ CommInterface::enqueueWrite(MemoryRequest * req) {
     }
     if (!tickEvent.scheduled()) {
         schedule(tickEvent, curTick() + processDelay);
-        //schedule(tickEvent, nextCycle());
     }
 }
 
