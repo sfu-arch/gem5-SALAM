@@ -720,7 +720,7 @@ LLVMInterface::constructStaticGraph() {
     uint64_t valueID = 0;
     SALAM::irvmap vmap;
     // Generate SALAM::Values for llvm::GlobalVariables
-    DPRINTF(LLVMInterface, "Instantiate SALAM::GlobalConstants\n");
+    DPRINTF(LLVMParse, "Instantiate SALAM::GlobalConstants\n");
     for (auto glob_iter = m->global_begin(); glob_iter != m->global_end(); glob_iter++) {
         llvm::GlobalVariable &glb = *glob_iter;
         llvm::errs() << "global var: " << glob_iter->getName() << "\n";
@@ -736,7 +736,7 @@ LLVMInterface::constructStaticGraph() {
     }
 
     // Generate SALAM::Functions
-    DPRINTF(LLVMInterface, "Instantiate SALAM::Functions\n");
+    DPRINTF(LLVMParse, "Instantiate SALAM::Functions\n");
     for (auto func_iter = m->begin(); func_iter != m->end(); func_iter++) {
         llvm::Function &func = *func_iter;
         std::shared_ptr<SALAM::Function> sfunc = std::make_shared<SALAM::Function>(valueID);
@@ -751,7 +751,7 @@ LLVMInterface::constructStaticGraph() {
         vmap.insert(SALAM::irvmaptype(&func, sfunc));
         valueID++;
         // Generate args for SALAM:Functions
-        DPRINTF(LLVMInterface, "Instantiate SALAM::Functions::Arguments\n");
+        DPRINTF(LLVMParse, "Instantiate SALAM::Functions::Arguments\n");
         for (auto arg_iter = func.arg_begin(); arg_iter != func.arg_end(); arg_iter++) {
             llvm::Argument &arg = *arg_iter;
             std::shared_ptr<SALAM::Argument> sarg = std::make_shared<SALAM::Argument>(valueID);
@@ -761,7 +761,7 @@ LLVMInterface::constructStaticGraph() {
             valueID++;
         }
         // Generate SALAM::BasicBlocks
-        DPRINTF(LLVMInterface, "Instantiate SALAM::Functions::BasicBlocks\n");
+        DPRINTF(LLVMParse, "Instantiate SALAM::Functions::BasicBlocks\n");
         for (auto bb_iter = func.begin(); bb_iter != func.end(); bb_iter++) {
             llvm::BasicBlock &bb = *bb_iter;
             std::shared_ptr<SALAM::BasicBlock> sbb = std::make_shared<SALAM::BasicBlock>(valueID);
@@ -769,7 +769,7 @@ LLVMInterface::constructStaticGraph() {
             vmap.insert(SALAM::irvmaptype(&bb, sbb));
             valueID++;
             //Generate SALAM::Instructions
-            DPRINTF(LLVMInterface, "Instantiate SALAM::Functions::BasicBlocks::Instructions\n");
+            DPRINTF(LLVMParse, "Instantiate SALAM::Functions::BasicBlocks::Instructions\n");
             for (auto inst_iter = bb.begin(); inst_iter != bb.end(); inst_iter++) {
                 llvm::Instruction &inst = *inst_iter;
 
@@ -806,7 +806,7 @@ LLVMInterface::constructStaticGraph() {
     }
 
     // Use value map to initialize SALAM::Values
-    DPRINTF(LLVMInterface, "Initialize SALAM::GlobalConstants\n");
+    DPRINTF(LLVMParse, "Initialize SALAM::GlobalConstants\n");
     for (auto glob_iter = m->global_begin(); glob_iter != m->global_end(); glob_iter++) {
         llvm::GlobalVariable &glb = *glob_iter;
         llvm::errs() << "global var: " << glob_iter->getName() << "\n";
@@ -822,7 +822,7 @@ LLVMInterface::constructStaticGraph() {
 
     }
     // Functions will initialize BasicBlocks, which will initialize Instructions
-    DPRINTF(LLVMInterface, "Initialize SALAM::Functions\n");
+    DPRINTF(LLVMParse, "Initialize SALAM::Functions\n");
     for (auto func_iter = m->begin(); func_iter != m->end(); func_iter++) {
         llvm::errs() << "function: " << func_iter->getName() << "\n";
 

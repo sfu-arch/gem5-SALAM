@@ -108,8 +108,6 @@ SALAM::Instruction::initialize(llvm::Value *irval,
 {
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     DPRINTF(LLVMInterface, "Initialize Value - Instruction::initialize\n");
-    // llvm::errs() << "insitializing instruction: " << *irval << "\n";
-
     SALAM::Value::initialize(irval, irmap);
     // Fetch the operands of the instruction
     llvm::User * iruser = llvm::dyn_cast<llvm::User>(irval);
@@ -147,7 +145,7 @@ SALAM::Instruction::initialize(llvm::Value *irval,
             }
 
             // TODO: Handle constant data and constant expressions
-            DPRINTF(LLVMInterface, "Instantiate Operand as Constant Data/Expression\n");
+            DPRINTF(LLVMParse, "Instantiate Operand as Constant Data/Expression\n");
             uint64_t id = valueList->back()->getUID() + 1;
             std::shared_ptr<SALAM::Constant> con = std::make_shared<SALAM::Constant>(id);
             valueList->push_back(con);
@@ -155,13 +153,13 @@ SALAM::Instruction::initialize(llvm::Value *irval,
             con->initialize(op1, irmap, valueList);
             opval = con;
         } else {
-            DPRINTF(LLVMInterface, "Instantiate Operands on Value List\n");
+            DPRINTF(LLVMParse, "Instantiate Operands on Value List\n");
             opval = mapit->second;
         }
-        DPRINTF(LLVMInterface, "Link Operand to Static Operands List\n");
+        DPRINTF(LLVMParse, "Link Operand to Static Operands List\n");
         staticDependencies.push_back(opval);
         if(llvm::isa<llvm::PHINode>(inst)) {
-            DPRINTF(LLVMInterface, "Phi Node Initiated\n");
+            DPRINTF(LLVMParse, "Phi Node Initiated\n");
             llvm::PHINode * phi = llvm::dyn_cast<llvm::PHINode>(inst);
             llvm::Value * bb = llvm::dyn_cast<llvm::Value>(phi->getIncomingBlock(phiBB));
             mapit = irmap->find(bb);
@@ -169,7 +167,7 @@ SALAM::Instruction::initialize(llvm::Value *irval,
             staticDependencies.push_back(opval);
             ++phiBB;
         } else if(llvm::isa<llvm::CmpInst>(inst)) {
-            DPRINTF(LLVMInterface, "Compare Instruction Initiated\n");
+            DPRINTF(LLVMParse, "Compare Instruction Initiated\n");
         }
     }
 }
@@ -677,7 +675,7 @@ Switch::initialize(llvm::Value * irval,
         std::shared_ptr<SALAM::Value> opval;
         if(mapit == irmap->end()) {
             // TODO: Handle constant data and constant expressions
-            DPRINTF(LLVMInterface, "Instantiate Operand as Constant Data/Expression\n");
+            DPRINTF(LLVMParse, "Instantiate Operand as Constant Data/Expression\n");
             uint64_t id = valueList->back()->getUID() + 1;
             std::shared_ptr<SALAM::Constant> con = std::make_shared<SALAM::Constant>(id);
             valueList->push_back(con);
@@ -685,10 +683,10 @@ Switch::initialize(llvm::Value * irval,
             con->initialize(op, irmap, valueList);
             opval = con;
         } else {
-            DPRINTF(LLVMInterface, "Instantiate Operands on Value List\n");
+            DPRINTF(LLVMParse, "Instantiate Operands on Value List\n");
             opval = mapit->second;
         }
-        DPRINTF(LLVMInterface, "Link Operand to Static Operands List\n");
+        DPRINTF(LLVMParse, "Link Operand to Static Operands List\n");
         tmpStaticDeps.push_back(opval);
     }
 
