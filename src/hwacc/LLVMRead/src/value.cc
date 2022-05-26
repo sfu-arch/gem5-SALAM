@@ -14,12 +14,15 @@ SALAM::Value::~Value()
 // copy constructor
 SALAM::Value::Value(const Value &copy_val)
 {
-      uid = copy_val.uid;
-      returnReg = copy_val.returnReg;
+    uid = copy_val.uid;
+    returnReg = copy_val.returnReg;
     valueTy = copy_val.valueTy;
     size = copy_val.size;
     ir_string = copy_val.ir_string;
     ir_stub = copy_val.ir_stub;
+    ptr_size = copy_val.ptr_size;
+    reading_value_from_map = copy_val.reading_value_from_map;
+
 }
 
 SALAM::Value::Value(std::shared_ptr<SALAM::Value> copy_val)
@@ -30,6 +33,10 @@ SALAM::Value::Value(std::shared_ptr<SALAM::Value> copy_val)
     size = copy_val->getSize();
     ir_string = copy_val->getIRString();
     ir_stub = copy_val->getIRStub();
+    ptr_size = copy_val->getPtrSize();
+    reading_value_from_map = copy_val.get()->reading_value_from_map;
+
+
 }
 
 // operator equals
@@ -42,6 +49,7 @@ SALAM::Value::operator = (Value &copy_val)
     size = copy_val.size;
     ir_string = copy_val.ir_string;
     ir_stub = copy_val.ir_stub;
+    reading_value_from_map = copy_val.reading_value_from_map;
     return *this;
 }
 
@@ -175,6 +183,8 @@ SALAM::Value::addPointerRegister(uint64_t val, bool istracked, bool isnull) {
 void
 SALAM::Value::setRegisterValue(const uint64_t data) {
     if (returnReg->isPtr()) {
+        std::cerr << getIRStub() << " : " << getUID() << " : " << getIRString() << ": setting pointer register value " << std::hex << data  << std::endl;
+        returnReg->writePtrData(data, ptr_size);
         DPRINTF(Runtime, "| Ptr Register\n");
         returnReg->writePtrData(data);
     } else {
@@ -249,7 +259,7 @@ SALAM::Value::setRegisterValue(uint8_t * data) {
         case llvm::Type::PointerTyID:
         {
             DPRINTF(Runtime, "Pointer\n");
-            returnReg->writePtrData(*(uint64_t *)data);
+            returnReg->writePtrData(*(uint64_t *)data, ptr_size);
             break;
         }
         default:

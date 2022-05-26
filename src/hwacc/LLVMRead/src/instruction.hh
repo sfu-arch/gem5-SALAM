@@ -33,7 +33,6 @@ class Instruction : public Value
         bool dbg = false;
         uint64_t functional_unit = 0;
         HWInterface* hw_interface;
-
     protected:
         valueListTy staticDependencies;
         // Operands
@@ -52,6 +51,8 @@ class Instruction : public Value
         bool committed = false;
         bool isready = false;
     public:
+        bool to_be_removed = false;
+
         Instruction(uint64_t id); //
         Instruction(uint64_t id, uint64_t OpCode); //
         Instruction(uint64_t id, uint64_t OpCode, uint64_t cycles); //
@@ -73,6 +74,7 @@ class Instruction : public Value
         void addRuntimeDependency(std::shared_ptr<SALAM::Instruction> dep) {
             dynamicDependencies.insert({dep->getUID(),dep});
         }
+        void setCycleCount(uint64_t cycles) { cycleCount = cycles; }
         void addRuntimeUser(std::shared_ptr<SALAM::Instruction> dep) { dynamicUsers.push_back(dep); }
         void signalUsers();
         bool isCommitted() { return committed; }

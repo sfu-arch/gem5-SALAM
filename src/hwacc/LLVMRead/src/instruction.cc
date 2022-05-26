@@ -74,7 +74,15 @@ SALAM::Instruction::Instruction_Debugger::dumper(Instruction *inst)
     //     inst->value_dump();
     // }
 }
-
+bool isMalloc(llvm::Value *val)
+{
+    if (llvm::isa<llvm::Instruction>(val)) {
+        if (!(llvm::dyn_cast<llvm::Instruction>(val))->getParent()->getParent()->getName().contains("diff"))
+            return false;
+    }
+    return val->getNameOrAsOperand().find("malloc") != std::string::npos;
+}
+long int malloc_start_address = 0;
 void
 SALAM::Instruction::initialize(llvm::Value *irval,
                          irvmap *irmap,
@@ -82,6 +90,8 @@ SALAM::Instruction::initialize(llvm::Value *irval,
 {
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     DPRINTF(LLVMInterface, "Initialize Value - Instruction::initialize\n");
+    // llvm::errs() << "insitializing instruction: " << *irval << "\n";
+
     SALAM::Value::initialize(irval, irmap);
     // Fetch the operands of the instruction
     llvm::User * iruser = llvm::dyn_cast<llvm::User>(irval);
@@ -89,22 +99,42 @@ SALAM::Instruction::initialize(llvm::Value *irval,
     assert(iruser);
     assert(inst);
     uint64_t phiBB = 0;
-    for (auto const op : iruser->operand_values()) {
+    for (auto op : iruser->operand_values()) {
         auto mapit = irmap->find(op);
         if(dbg) {
-            std::cout << "| Operand Found: ";
+            std::cerr << "| Operand Found: ";
             op->printAsOperand(llvm::errs());
             llvm::errs() << "\n";
         }
         std::shared_ptr<SALAM::Value> opval;
         if(mapit == irmap->end()) {
+            auto op1 = op;
+            if (!llvm::dyn_cast<llvm::ConstantData>(op) && !llvm::dyn_cast<llvm::ConstantExpr>(op)) {
+                llvm::errs() << "| Operand Not Found: " << *irval << " -> " << op->getName() << " type: " << *op->getType() << "\n";
+                if (isMalloc(op)) {
+                    llvm::errs() << "| Operand is a malloc. Will not handle it as a constant\n";
+                    return;
+                } else if (!op->getType()->isVoidTy() && !(llvm::isa<llvm::Function>(op) && llvm::dyn_cast<llvm::Function>(op)->getReturnType()->isVoidTy())) {
+                        op1 = llvm::Constant::getNullValue(llvm::dyn_cast<llvm::Function>(op)->getReturnType());
+                        llvm::errs() << "getting Null value\n";
+                } else {
+                    // llvm::dyn_cast<llvm::Instruction>(irval)->removeFromParent();
+                    to_be_removed = true;
+                    return;
+                }
+            }
+
+            if (llvm::isa<llvm::Function>(op) || llvm::isa<llvm::CallInst>(op)) {
+                llvm::errs() << "call : " << *op << "\n";
+            }
+
             // TODO: Handle constant data and constant expressions
             DPRINTF(LLVMInterface, "Instantiate Operand as Constant Data/Expression\n");
             uint64_t id = valueList->back()->getUID() + 1;
             std::shared_ptr<SALAM::Constant> con = std::make_shared<SALAM::Constant>(id);
             valueList->push_back(con);
             irmap->insert(SALAM::irvmaptype(op, con));
-            con->initialize(op, irmap, valueList);
+            con->initialize(op1, irmap, valueList);
             opval = con;
         } else {
             DPRINTF(LLVMInterface, "Instantiate Operands on Value List\n");
@@ -138,6 +168,7 @@ SALAM::Instruction::signalUsers()
             user->dump();
             user->value_dump();
         }
+
         user->setOperandValue(uid);
         count++;
     }
@@ -180,22 +211,34 @@ SALAM::Instruction::ready()
 bool
 SALAM::Instruction::launch()
 {
+    llvm::errs() << "Launching " << getUID() << "\n";
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++launch()\n");
+    // std::cerr << "||==launch================= " << getIRStub() << "\n";;
     if (hasFunctionalUnit()) {
         if(!hw_interface->availableFunctionalUnit(getFunctionalUnit())) return false;
     }
     launched = true;
     if (getCycleCount() == 0) { // Instruction ready to be committed
         DPRINTF(Runtime, "||  0 Cycle Instruction\n");
-        compute();
+        if (!reading_value_from_map)
+            compute();
+        else
+            llvm::errs() << "Reading value of " << getIRStub() << " from map\n";
+        // compute();
         commit();
     } else {
         currentCycle++;
-        compute();
+        if (!reading_value_from_map)
+            compute();
+        else
+            llvm::errs() << "Reading value of " << getIRStub() << " from map\n";
+
+        // compute();
     }
     DPRINTF(Runtime, "||==Return: %s\n", isCommitted() ? "true" : "false");
     DPRINTF(Runtime, "||==launch================\n");
+
     return isCommitted();
 }
 
@@ -206,17 +249,21 @@ SALAM::Instruction::commit()
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++commit()\n");
     DPRINTF(Runtime, "||  Current Cycle: %i\n", getCurrentCycle());
     if (getCurrentCycle() == getCycleCount()) { // Instruction ready to be committed
+        std::cerr << "Commiting " << getIRStub() << " -> " << getUID() << "\n";
         signalUsers();
         committed = true;
         DPRINTF(Runtime, "||==Return: %s\n", committed ? "true" : "false");
         DPRINTF(Runtime, "||==commit================\n");
         return true;
     } else {
+
         DPRINTF(Runtime, "||  Remaining Cycles: %i\n", getCycleCount() - getCurrentCycle());
         currentCycle++;
     }
     DPRINTF(Runtime, "||==Return: %s\n", committed ? "true" : "false");
     DPRINTF(Runtime, "||==commit================\n");
+
+    std::cerr << "Not Commiting " << getIRStub() << "\n";
     return false;
 }
 
@@ -2262,6 +2309,7 @@ Load::createMemoryRequest() {
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++createMemoryRequest()\n");
     Addr memAddr = (operands.front().getPtrRegValue());
+    std::cerr << "|| Creating load memory request for " << ir_string << " at " << memAddr << std::endl;
     size_t reqLen = getSizeInBytes();
     DPRINTF(RuntimeCompute, "|| Launching %s\n", ir_string);
     DPRINTF(RuntimeCompute, "|| Addr[%x] Size[%i]\n", memAddr, reqLen);
@@ -2326,6 +2374,8 @@ Store::compute() {
 MemoryRequest *
 Store::createMemoryRequest() {
     Addr memAddr = (operands.at(1).getPtrRegValue());
+    std::cerr << "|| Creating store memory request for " << ir_stub << ": " << getUID() << ": " << ir_string << " at " << memAddr << std::endl;
+
     size_t reqLen = operands.at(0).getSizeInBytes();
 
     MemoryRequest * req;
@@ -2450,6 +2500,7 @@ GetElementPtr::initialize(llvm::Value * irval,
 
 void
 GetElementPtr::compute() {
+
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
     DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
@@ -2475,6 +2526,7 @@ GetElementPtr::compute() {
     uint64_t result = ptr + offset;
     DPRINTF(RuntimeCompute, "|| Ptr[%x]  Offset[%x] (Flat Idx[%d])\n", ptr, offset, offset/resultElementSizeInBytes);
     DPRINTF(RuntimeCompute, "|| Result: Addr[%x]\n", result);
+    std::cerr << "Stting result to " << result << std::endl;
     setRegisterValue(result);
 }
 
@@ -3346,6 +3398,8 @@ void
 BitCast::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
+    llvm::errs() << "Bitcasting " << *irval << " - " << *((llvm::Instruction *)irval)->getOperand(0)  << " -> " <<
+     (*irmap)[((llvm::Instruction *)irval)->getOperand(0)].get()->getIRStub() << "\n";
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
@@ -3353,6 +3407,7 @@ BitCast::initialize(llvm::Value * irval,
 
 void
 BitCast::compute() {
+    std::cerr << "BitCast::compute() " <<  operands.front().getPtrRegValue() << std::endl;
 #if USE_LLVM_AP_VALUES
     auto opdata = operands.front().getPtrRegValue();
     setRegisterValue(opdata);

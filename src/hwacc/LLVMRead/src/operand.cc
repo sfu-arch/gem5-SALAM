@@ -12,6 +12,10 @@ SALAM::Constant::initialize(llvm::Value * irval,
                             SALAM::valueListTy * values)
 {
     //Initialize SALAM::Value
+    // if (llvm::isa<llvm::Function>(irval)) {
+    //     addPointerRegister(false, true);
+    //     return;
+    // }
     SALAM::Value::initialize(irval, irmap);
     // Parse the constant value
     llvm::ConstantData * cd = llvm::dyn_cast<llvm::ConstantData>(irval);
@@ -291,10 +295,14 @@ SALAM::Constant::initialize(llvm::Value * irval,
             #endif
                 break;
             }
-            default:
+            default: {
+                llvm::errs() << "Initializing nested Constant failed" << *irval << "\n";
+
                 assert(0); // We do not support this nested ConstantExpr
+            }
         }
     } else {
+        llvm::errs() << "Initializing Constant failed " << *irval << "\n";
         assert(0); // The value is not a supported type of llvm::Constant
     }
 }
@@ -312,11 +320,19 @@ SALAM::GlobalConstant::initialize(llvm::Value * irval,
     // Parse the initializer of the value
     auto glb = llvm::dyn_cast<llvm::GlobalVariable>(irval);
     assert(glb);
-    assert(glb->hasInitializer());
+    llvm::Constant *initializer;
+    // assert(glb->hasInitializer());
+    if (!glb->hasInitializer())
+        initializer = llvm::ConstantInt::get(glb->getContext(), llvm::APInt(/*nbits*/32, 0, /*bool*/false));
+
+    else
+        initializer = glb->getInitializer();
     // glb->getInitializer()->print(llvm::outs());
 
     //Initialize SALAM::ConstantData
-    SALAM::Constant::initialize(glb->getInitializer(), irmap, values);
+    // SALAM::Constant::initialize(glb->getInitializer(), irmap, values);
+    SALAM::Constant::initialize(initializer, irmap, values);
+
 }
 
 SALAM::Argument::Argument(uint64_t id) :

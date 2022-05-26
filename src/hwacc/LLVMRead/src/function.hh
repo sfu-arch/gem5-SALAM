@@ -14,7 +14,8 @@ namespace SALAM {
 		bool top;
 		unsigned activeInstances = 0;
 		unsigned instanceLimit = 1;
-	public:
+
+        public:
 		Function(uint64_t id);
 		void initialize(llvm::Value * irval, irvmap *vmap, SALAM::valueListTy *valueList, std::string topName);
 		bool isTop() { return top; }
@@ -26,7 +27,8 @@ namespace SALAM {
 		void addInstance() { activeInstances++; }
 		void removeInstance() { if (activeInstances>0) activeInstances--; }
 		bool canLaunch() { return activeInstances < instanceLimit; }
-	};
+                llvm::Type *return_type;
+        };
 }
 
 #endif //__SALAM_FUNCTION_HH__

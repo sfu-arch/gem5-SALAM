@@ -34,7 +34,7 @@ class CommInterface : public BasicPioDevice
 
   public:
     bool debug() { return debugEnabled; }
-
+    Addr last_valid_address = 0;
   protected:
     class MemSidePort : public StreamRequestPort
     {

@@ -24,10 +24,13 @@ typedef std::vector<std::shared_ptr<Value>> valueListTy;
 class Value
 {
     public:
-
+        bool reading_value_from_map = false;
+        void addRegister(llvm::Type *irtype, bool isTracked=true);
+        std::string name_or_as_operand;
     protected:
         uint64_t uid = 0;
         uint64_t size = 0;
+        unsigned ptr_size = 4;
         std::string ir_string;
         std::string ir_stub;
         llvm::Type::TypeID valueTy;
@@ -35,7 +38,6 @@ class Value
         bool dbg = false;
         bool inst = false;
 
-        void addRegister(llvm::Type *irtype, bool isTracked=true);
     #if USE_LLVM_AP_VALUES
         void addAPIntRegister(const llvm::APInt & val);
         void addAPIntRegister(const llvm::APSInt & val);
@@ -84,6 +86,7 @@ class Value
         llvm::Type::TypeID getType() { return valueTy; }
         std::string getIRString() { return ir_string; }
         std::string getIRStub() { return ir_stub; }
+        unsigned getPtrSize() {return ptr_size;}
 
         // Helper functions for setting the value of the return register directly from the value
         // Using these functions will increment the write counters on tracked registers
@@ -92,6 +95,7 @@ class Value
     #if USE_LLVM_AP_VALUES
         void setRegisterValue(const llvm::APInt &data);
         void setRegisterValue(const llvm::APFloat &data);
+
     #endif
         void setRegisterValue(const uint64_t data);
         void setRegisterValue(uint8_t * data);

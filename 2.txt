@@ -1,0 +1,26 @@
+clang-12: warning: treating 'c' input as 'c++' when in C++ mode, this behavior is deprecated [-Wdeprecated]
+clang-12: warning: treating 'c' input as 'c++' when in C++ mode, this behavior is deprecated [-Wdeprecated]
+build/ARM/sim/init.cc: In static member function 'static PyObject* gem5::EmbeddedPyBind::initAll()':
+build/ARM/sim/init.cc:203:41: warning: 'pybind11::module_::module_(const char*, const char*)' is deprecated: Use PYBIND11_MODULE or module_::create_extension_module instead [-Wdeprecated-declarations]
+  203 |     py::module_ m_m5 = py::module_("_m5");
+      |                                         ^
+In file included from build/ARM/sim/init.hh:44,
+                 from build/ARM/sim/init.cc:44:
+ext/pybind11/include/pybind11/pybind11.h:947:14: note: declared here
+  947 |     explicit module_(const char *name, const char *doc = nullptr) {
+      |              ^~~~~~~
+In file included from build/ARM/hwacc/LLVMRead/src/basic_block.hh:6,
+                 from build/ARM/hwacc/llvm_interface.hh:35,
+                 from build/ARM/hwacc/llvm_interface.cc:2:
+build/ARM/hwacc/LLVMRead/src/instruction.hh: In member function 'virtual uint64_t SALAM::Instruction::getFunctionalUnit()':
+build/ARM/hwacc/LLVMRead/src/instruction.hh:85:48: warning: no return statement in function returning non-void [-Wreturn-type]
+   85 |         virtual uint64_t getFunctionalUnit() { }
+      |                                                ^
+build/ARM/hwacc/llvm_interface.cc: In member function 'void LLVMInterface::ActiveFunction::handleMallocCall(int)':
+build/ARM/hwacc/llvm_interface.cc:81:89: warning: type qualifiers ignored on cast result type [-Wignored-qualifiers]
+   81 |         callee_return_val.setRegisterValue((const uint64_t) createMallocBaseAddress(size));
+      |                                                                                         ^
+build/ARM/hwacc/llvm_interface.cc: In member function 'void LLVMInterface::readAddressMap()':
+build/ARM/hwacc/llvm_interface.cc:106:28: warning: unused variable 'sz' [-Wunused-variable]
+  106 |     std::string::size_type sz;   // alias of size_t
+      |                            ^~

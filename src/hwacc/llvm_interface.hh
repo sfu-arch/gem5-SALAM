@@ -58,6 +58,9 @@ class LLVMInterface : public ComputeUnit {
     bool lockstep;
     bool dbg;
     bool hardwareEnabled = false;
+    std::map<std::string, uint32_t> cost_map;
+    std::map<std::string, uint64_t> value_map;
+
     std::chrono::duration<float> setupTime;
     std::chrono::duration<float> simTotal;
     std::chrono::duration<float> simTime;
@@ -131,6 +134,8 @@ class LLVMInterface : public ComputeUnit {
           return (computeQueue.find(uid) != computeQueue.end());
         }
     public:
+
+
         ActiveFunction(LLVMInterface * _owner, std::shared_ptr<SALAM::Function> _func,
                        std::shared_ptr<SALAM::Instruction> _caller):
                        owner(_owner), func(_func), caller(_caller),
@@ -139,6 +144,12 @@ class LLVMInterface : public ComputeUnit {
                           lockstep = (owner->getLockstepStatus());
                           dbg = owner->debug();
                        }
+        // ADDED BY ME
+        void handleMallocCall(int size);
+        bool isMalloc(SALAM::Value* val) {
+          return val->getIRStub().find("malloc") != std::string::npos;
+        }
+
         void readCommit(MemoryRequest *req);
         void writeCommit(MemoryRequest *req);
         void findDynamicDeps(std::shared_ptr<SALAM::Instruction> inst);
@@ -170,6 +181,10 @@ class LLVMInterface : public ComputeUnit {
     virtual bool debug() { return comm->debug(); }
     // virtual bool debug() { return true; }
   public:
+  // ADDED BY ME
+    std::map<std::string, std::vector<uint64_t> > address_map;
+    void readAddressMap();
+
     PARAMS(LLVMInterface);
     LLVMInterface(const LLVMInterfaceParams &p);
     void tick();
