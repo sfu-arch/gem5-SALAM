@@ -91,7 +91,11 @@ LLVMInterface::ActiveFunction::handleMallocCall(int size)
 
 void handleInstLog(SALAM::Instruction *inst, int id)
 {
-    std::cerr << "Handling reservation: " << inst->getIRStub() << " ID: " << std::dec << inst->getUID() << " : " << id << std::endl;
+    return;
+    // if (inst)
+    //     std::cerr << "Handling reservation: " << inst->getIRString() << " ID: " << std::dec << inst->getUID() << " : " << id << std::endl;
+    // else 
+    //     std::cerr << "Inst is null" << std::endl;
 }
 
 std::string split(std::string &line, std::string delim) {
@@ -385,7 +389,20 @@ LLVMInterface::ActiveFunction::findDynamicDeps(std::shared_ptr<SALAM::Instructio
     // // dep_uids.push_back(inst->getUID());
 
     // Find dependencies currently in queues
-
+    if (inst->isLoad()) {
+        std::cerr << "Load: " << inst->getUID() << " " << inst->getIRString() << std::endl;
+        auto queue_iter = reservation.rbegin();
+        while ((queue_iter != reservation.rend())) {
+            auto queued_inst = *queue_iter;
+            // Look at each instruction in runtime queue once
+            if (inst->isLoad() && queued_inst->isStore()) {
+                std::cerr << "Queue100: " << queued_inst->getUID() << " " << queued_inst->getIRString() << std::endl;
+                inst->addRuntimeDependency(queued_inst);
+                queued_inst->addRuntimeUser(inst);
+            }
+            queue_iter++;
+        }
+    }
     // Reverse search the reservation queue because we want to link only the last instance of each dep
     auto queue_iter = reservation.rbegin();
     while ((queue_iter != reservation.rend()) && !dep_uids.empty()) {
@@ -401,6 +418,7 @@ LLVMInterface::ActiveFunction::findDynamicDeps(std::shared_ptr<SALAM::Instructio
             } else {
                 dep_it++;
             }
+
         }
         queue_iter++;
     }
@@ -410,7 +428,11 @@ LLVMInterface::ActiveFunction::findDynamicDeps(std::shared_ptr<SALAM::Instructio
     for (auto dep_it = dep_uids.begin(); dep_it != dep_uids.end();) {
         auto queue_iter = computeQueue.find(*dep_it);
         if (queue_iter != computeQueue.end()) {
-            auto queued_inst = queue_iter->second;
+
+            auto queued_inst = queue_iter->second;            
+            if (inst->isLoad()) {
+                std::cerr << "Queue1: " << queued_inst->getUID() << " " << queued_inst->getIRString() << std::endl;
+            }
             inst->addRuntimeDependency(queued_inst);
             queued_inst->addRuntimeUser(inst);
             dep_it = dep_uids.erase(dep_it);
@@ -423,6 +445,9 @@ LLVMInterface::ActiveFunction::findDynamicDeps(std::shared_ptr<SALAM::Instructio
         auto queue_iter = readQueue.find(*dep_it);
         if (queue_iter != readQueue.end()) {
             auto queued_inst = queue_iter->second;
+            if (inst->isLoad()) {
+                std::cerr << "Queue2: " << queued_inst->getUID() << " " << queued_inst->getIRString() << std::endl;
+            }
             inst->addRuntimeDependency(queued_inst);
             queued_inst->addRuntimeUser(inst);
             dep_it = dep_uids.erase(dep_it);
@@ -457,6 +482,9 @@ LLVMInterface::ActiveFunction::findDynamicDeps(std::shared_ptr<SALAM::Instructio
         auto queue_iter = writeQueue.find(*dep_it);
         if (queue_iter != writeQueue.end()) {
             auto queued_inst = queue_iter->second;
+            if (inst->isLoad()) {
+                std::cerr << "Queue3: " << queued_inst->getUID() << " " << queued_inst->getIRString() << std::endl;
+            }
             inst->addRuntimeDependency(queued_inst);
             queued_inst->addRuntimeUser(inst);
             dep_it = dep_uids.erase(dep_it);
@@ -513,7 +541,7 @@ LLVMInterface::dumpModule(llvm::Module *M) {
 
 void
 LLVMInterface::constructStaticGraph() {
-    readAddressMap();
+    // readAddressMap();
 
 /*********************************************************************************************
  Constructing the Static CDFG

@@ -249,7 +249,7 @@ SALAM::Instruction::commit()
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++commit()\n");
     DPRINTF(Runtime, "||  Current Cycle: %i\n", getCurrentCycle());
     if (getCurrentCycle() == getCycleCount()) { // Instruction ready to be committed
-        std::cerr << "Commiting " << getIRStub() << " -> " << getUID() << "\n";
+        std::cerr << "Commiting " << getIRString() << " -> " << getUID() << "\n";
         signalUsers();
         committed = true;
         DPRINTF(Runtime, "||==Return: %s\n", committed ? "true" : "false");
@@ -263,7 +263,7 @@ SALAM::Instruction::commit()
     DPRINTF(Runtime, "||==Return: %s\n", committed ? "true" : "false");
     DPRINTF(Runtime, "||==commit================\n");
 
-    std::cerr << "Not Commiting " << getIRStub() << "\n";
+    std::cerr << "Not Commiting " << getIRString() << "\n";
     return false;
 }
 

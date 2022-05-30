@@ -74,7 +74,9 @@ static void neural_network_softmax_v2(const float * activations, float* outp, in
 static float neural_network_hypothesis_v2(const mnist_image_t * image, const neural_network_t * network, uint8_t label)
 {
     // float activations[MNIST_LABELS] = {0};
-    float *activations = (float *) 0x100200c0;
+    float *activations = (float *) malloc(MNIST_LABELS * sizeof(float));
+
+    // float *activations = (float *) 0x100200c0;
 
     int i, j;
 #pragma clang loop unroll(full)
@@ -91,7 +93,7 @@ static float neural_network_hypothesis_v2(const mnist_image_t * image, const neu
     return -log(activations2[label]);
 }
 
-#define N 10
+#define N 25
 
 double dt = 0.001;
 
@@ -111,17 +113,17 @@ double ComputeU(double *x) {
 
 void top() {
 
-    // mnist_image_t *x = (mnist_image_t *) 0x100200c0;
-    // neural_network_t *v =  (neural_network_t *) 0x10033980;
-    // mnist_image_t *x_grad = (mnist_image_t *) 0x10033cc0;
-    // uint8_t label = 3;
-    // __enzyme_autodiff<void>(neural_network_hypothesis_v2, enzyme_const, x, v, x_grad, label);
+    mnist_image_t *x = (mnist_image_t *) 0x100200c0;
+    neural_network_t *v =  (neural_network_t *) 0x10033980;
+    mnist_image_t *x_grad = (mnist_image_t *) 0x10033cc0;
+    uint8_t label = 3;
+    __enzyme_autodiff<void>(neural_network_hypothesis_v2, enzyme_const, x, v, x_grad, label);
 
-    volatile double * x = (double *)MAT;
-    // double *v = new double[N]
-    double *x_grad = (double *)(VEC);
+    // volatile double * x = (double *)MAT;
+    // // double *v = new double[N]
+    // double *x_grad = (double *)(VEC);
 
-    // merge(tempBase, arrBase, tempBase);
-    // arrBase[0] = compute_U(1);
-    __enzyme_autodiff<double>(ComputeU, x, x_grad) ;
+    // // merge(tempBase, arrBase, tempBase);
+    // // arrBase[0] = compute_U(1);
+    // __enzyme_autodiff<double>(ComputeU, x, x_grad) ;
 }
