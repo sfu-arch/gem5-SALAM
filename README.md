@@ -225,3 +225,11 @@ The [SALAM Object Overview](https://github.com/TeCSAR-UNCC/gem5-SALAM/blob/maste
 Please download the latest version of the Linux Kernel for ARM from the [gem5 ARM kernel page](http://gem5.org/ARM_Kernel).
 You will also need the [ARM disk images](http://www.gem5.org/dist/current/arm/) for full system simulation.
 Devices operate in the physical memory address space.
+
+## Create a Cluster Cache
+
+1. Go to config/SALAM/generated/file name, to line 27. Add `cache_size=’1MB’` to `connect_caches()`
+2. Add `clstr.top.acp = clstr.coherency_bus.cpu_side_ports` to top config.
+3. Go to src/hwacc/AccCluster.py line 64 : make it: `if(cache_size!=0):`
+4. Go to system_validation.sh file and comment out *`${M5_PATH}/SALAM-Configurator/systembuilder.py --sysName $BENCH --benchDir "benchmarks/test-cases/${BENCH}"`*
+5. Run the system_validation file.

@@ -61,7 +61,7 @@ LLVMInterface::ActiveFunction::scheduleBB(std::shared_ptr<SALAM::BasicBlock> bb)
     if (needToScheduleBranch) scheduleBB(nextBB);
 }
 
-uint64_t base_address = (uint64_t)0x10033cc0;
+uint64_t base_address = (uint64_t)0x80c00000;
 uint64_t createMallocBaseAddress(int size)
 {
     std::cerr << "returning base address: " << base_address << std::endl;
@@ -93,7 +93,7 @@ void handleInstLog(SALAM::Instruction *inst, int id)
 {
     return;
     // if (inst)
-    //     std::cerr << "Handling reservation: " << inst->getIRString() << " ID: " << std::dec << inst->getUID() << " : " << id << std::endl;
+    //     std::cerr << " ID: " << std::dec << inst->getUID() << " : " << id << "Handling reservation: " << inst->getIRString() << std::endl;
     // else 
     //     std::cerr << "Inst is null" << std::endl;
 }
@@ -396,12 +396,15 @@ LLVMInterface::ActiveFunction::findDynamicDeps(std::shared_ptr<SALAM::Instructio
             auto queued_inst = *queue_iter;
             // Look at each instruction in runtime queue once
             if (inst->isLoad() && queued_inst->isStore()) {
-                std::cerr << "Queue100: " << queued_inst->getUID() << " " << queued_inst->getIRString() << std::endl;
+                std::cerr << "Queue100: " << std::dec << queued_inst->getUID() << " " << queued_inst->getIRString() << std::endl;
                 inst->addRuntimeDependency(queued_inst);
                 queued_inst->addRuntimeUser(inst);
             }
+
             queue_iter++;
+
         }
+        std::cerr << "Done with load ...\n";
     }
     // Reverse search the reservation queue because we want to link only the last instance of each dep
     auto queue_iter = reservation.rbegin();

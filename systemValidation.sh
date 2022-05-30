@@ -71,7 +71,7 @@ SYS_OPTS="--mem-size=4GB \
           --machine-type=VExpress_GEM5_V1 \
           --dtb-file=none --bare-metal \
           --cpu-type=TimingSimpleCPU"
-CACHE_OPTS="--caches --l2cache"
+CACHE_OPTS="--caches --l2cache --acc_cache"
 
 DEBUG_FLAGS=""
 
@@ -85,7 +85,7 @@ RUN_SCRIPT="$BINARY $DEBUG_FLAGS --outdir=$OUTDIR \
 			--accpath=$M5_PATH/benchmarks/sys_validation \
 			--accbench=$BENCH $CACHE_OPTS"
 
-${M5_PATH}/SALAM-Configurator/systembuilder.py --sysName $BENCH --benchDir "benchmarks/sys_validation/${BENCH}"
+# ${M5_PATH}/SALAM-Configurator/systembuilder.py --sysName $BENCH --benchDir "benchmarks/sys_validation/${BENCH}"
 
 if [ "${PRINT_TO_FILE}" == "true" ]; then
 	mkdir -p $OUTDIR
