@@ -211,7 +211,7 @@ SALAM::Instruction::ready()
 bool
 SALAM::Instruction::launch()
 {
-    llvm::errs() << "Launching " << getUID() << "\n";
+    llvm::errs() << "Launching " << getIRString() << "\n";
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++launch()\n");
     // std::cerr << "||==launch================= " << getIRStub() << "\n";;
