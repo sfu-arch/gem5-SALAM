@@ -6,7 +6,7 @@
 
 # clean:
 # 	rm -f *.ll
-MAIN_FILE=matd2
+MAIN_FILE=nn
 KERN=$(MAIN_FILE).c top.c
 build: $(FILES)
 	clang++ -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -fno-builtin -emit-llvm $(KERN) -target x86_64

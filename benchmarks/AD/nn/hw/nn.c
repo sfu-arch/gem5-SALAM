@@ -1,4 +1,4 @@
-#include "../matd2_clstr_hw_defines.h"
+#include "../nn_clstr_hw_defines.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -75,7 +75,6 @@ static float neural_network_hypothesis_v2(const mnist_image_t * image, const neu
 {
     // float activations[MNIST_LABELS] = {0};
     float *activations = (float *) malloc(MNIST_LABELS * sizeof(float));
-
     // float *activations = (float *) 0x100200c0;
 
     int i, j;
@@ -95,24 +94,6 @@ static float neural_network_hypothesis_v2(const mnist_image_t * image, const neu
     return -log(activations2[label]);
 }
 
-#define N 15
-
-double dt = 0.001;
-
-double ComputeU(double *x) {
-    double r;
-    double u = 1.0;
-// #pragma clang loop unroll(full)
-    for (int i = 0; i < N; i++) {
-// #pragma clang loop unroll(full)
-        for (int j=i+1; j < N; j++) {
-            r = x[i] - x[j];
-            u *= -1.0 / (r + 0.001);
-        }
-    }
-    return u;
-}
-
 void top() {
 
     // mnist_image_t *x = (mnist_image_t *) 0x100200c0;
@@ -122,15 +103,4 @@ void top() {
     mnist_image_t *x_grad = (mnist_image_t *) 0x80C007D0;
     uint8_t label = 1;
     __enzyme_autodiff<void>(neural_network_hypothesis_v2, enzyme_const, x, v, x_grad, label);
-
-    // volatile double * x = (double *)MAT;
-    // // volatile double * x = (double *)0x80C007D0;
-
-    // // double *v = new double[N]
-    // double *x_grad = (double *)(VEC);
-    // // double *x_grad = (double *)(0x80C003E8);
-
-    // // merge(tempBase, arrBase, tempBase);
-    // // arrBase[0] = compute_U(1);
-    // __enzyme_autodiff<double>(ComputeU, x, x_grad) ;
 }

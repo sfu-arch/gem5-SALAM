@@ -5,7 +5,7 @@ void top(uint64_t m1_addr,
 		 uint64_t m3_addr) {
 
 	// Define Device MMRs
-	volatile uint8_t  * MATFLAG  = (uint8_t *)MATD2;
+	volatile uint8_t  * MATFLAG  = (uint8_t *)NN;
 	volatile uint8_t  * DmaFlags   = (uint8_t  *)(DMA_Flags);
 	volatile uint64_t * DmaRdAddr  = (uint64_t *)(DMA_RdAddr);
 	volatile uint64_t * DmaWrAddr  = (uint64_t *)(DMA_WrAddr);

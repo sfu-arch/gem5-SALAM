@@ -1,6 +1,6 @@
 ---
 acc_cluster:
-  - Name: matd2_clstr
+  - Name: nn_clstr
   - DMA:
     - Name: dma
       MaxReqSize: 64
@@ -10,8 +10,8 @@ acc_cluster:
       InterruptNum: 95
   - Accelerator:
     - Name: Top
-      IrPath: benchmarks/sys_validation/matd2_rev/hw/top.ll
-      ConfigPath: benchmarks/sys_validation/matd2_rev/hw/top.ini
+      IrPath: benchmarks/AD/nn/hw/top.ll
+      ConfigPath: benchmarks/AD/nn/hw/top.ini
       PIOSize: 25
       InterruptNum: 68
       PIOMaster: LocalBus
@@ -19,9 +19,9 @@ acc_cluster:
       LocalSlaves: LocalBus
       Debug: False
   - Accelerator:
-    - Name: matd2
-      IrPath: benchmarks/sys_validation/matd2_rev/hw/matd2.ll
-      ConfigPath: benchmarks/sys_validation/matd2_rev/hw/matd2.ini
+    - Name: nn
+      IrPath: benchmarks/AD/nn/hw/nn.ll
+      ConfigPath: benchmarks/AD/nn/hw/nn.ini
       Debug: False
       PIOSize: 1
       PIOMaster: LocalBus

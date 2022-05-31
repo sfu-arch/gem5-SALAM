@@ -3,7 +3,7 @@
 #include <cstring>
 #include "bench.h"
 #include "../../../common/m5ops.h"
-#include "../gemm_clstr_hw_defines.h"
+#include "../nn_clstr_hw_defines.h"
 
 
 volatile uint8_t  * top   = (uint8_t  *)(TOP + 0x00);
