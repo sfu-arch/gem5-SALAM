@@ -233,3 +233,13 @@ Devices operate in the physical memory address space.
 3. Go to src/hwacc/AccCluster.py line 64 : make it: `if(cache_size!=0):`
 4. Go to system_validation.sh file and comment out *`${M5_PATH}/SALAM-Configurator/systembuilder.py --sysName $BENCH --benchDir "benchmarks/test-cases/${BENCH}"`*
 5. Run the system_validation file.
+
+## How to run ad benchmarks?
+run:
+```
+./ad.sh -b $benchmark
+```
+For example:
+```
+./ad.sh -b gravity
+```
