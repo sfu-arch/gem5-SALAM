@@ -4,7 +4,7 @@
 #include <inttypes.h>
 #include <stdint.h>
 #include "../defines.h"
-#include "../gemm_clstr_hw_defines.h"
+#include "../nn_clstr_hw_defines.h"
 
 #define DEV_INIT	0x01
 #define DEV_INTR	0x04
