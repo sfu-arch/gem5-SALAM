@@ -12,21 +12,21 @@ digraph G {
 		"mul : FMul : for.body5" [color = yellow style=filled];
 		"mul : FMul : for.body5" -> "add : FAdd : for.body5" 
 		"add : FAdd : for.body5" [color = yellow style=filled];
-		"add : FAdd : for.body5" -> "$%4 : PHI : for.body5" 
 		"add : FAdd : for.body5" -> "arrayidx2 : 34 : for.body" 
+		"add : FAdd : for.body5" -> "$%4 : PHI : for.body5" 
 		"image : " -> "arrayidx11 : 34 : for.body5" 
 		"image : " -> "image4 : 49 : entry" 
 		"network : " -> "arrayidx : 34 : for.body" 
 		"network : " -> "arrayidx9 : 34 : for.body5" 
-		"network' : " -> "arrayidx'ipg : 34 : for.body" 
-		"network' : " -> "arrayidx9'ipg_unwrap : 34 : invertfor.body5" 
-		"network' : " -> "arrayidx9'ipg : 34 : for.body5" 
 		"network' : " -> "arrayidx'ipg_unwrap : 34 : invertfor.body" 
-		"arrayidx'ipg_unwrap : 34 : invertfor.body" -> "$%13 : Load : invertfor.body" 
+		"network' : " -> "arrayidx9'ipg_unwrap : 34 : invertfor.body5" 
+		"network' : " -> "arrayidx'ipg : 34 : for.body" 
+		"network' : " -> "arrayidx9'ipg : 34 : for.body5" 
 		"arrayidx'ipg_unwrap : 34 : invertfor.body" -> "arrayidx'ipg_unwrap : 34 : invertfor.body" 
+		"arrayidx'ipg_unwrap : 34 : invertfor.body" -> "$%13 : Load : invertfor.body" 
 		"$%3 : Load : for.body" [color = gray style=filled];
-		"$%3 : Load : for.body" -> "$%4 : PHI : for.body5" 
 		"$%3 : Load : for.body" -> "arrayidx2 : 34 : for.body" 
+		"$%3 : Load : for.body" -> "$%4 : PHI : for.body5" 
 		"arrayidx2 : 34 : for.body" -> "arrayidx2 : 34 : for.body" 
 		"$%4 : PHI : for.body5" -> "add : FAdd : for.body5" 
 		"$%13 : Load : invertfor.body" [color = gray style=filled];
@@ -34,8 +34,8 @@ digraph G {
 		"$%14 : FAdd : invertfor.body" [color = yellow style=filled];
 		"$%14 : FAdd : invertfor.body" -> "arrayidx'ipg_unwrap : 34 : invertfor.body" 
 		"image4 : 49 : entry" -> "<badref> : 56 : entry" 
-		"arrayidx9'ipg_unwrap : 34 : invertfor.body5" -> "$%37 : Load : invertfor.body5" 
 		"arrayidx9'ipg_unwrap : 34 : invertfor.body5" -> "arrayidx9'ipg_unwrap : 34 : invertfor.body5" 
+		"arrayidx9'ipg_unwrap : 34 : invertfor.body5" -> "$%37 : Load : invertfor.body5" 
 		"$%37 : Load : invertfor.body5" [color = gray style=filled];
 		"$%37 : Load : invertfor.body5" -> "$%38 : FAdd : invertfor.body5" 
 		"$%38 : FAdd : invertfor.body5" [color = yellow style=filled];

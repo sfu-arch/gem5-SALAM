@@ -10,8 +10,8 @@
 
 #define MNIST_LABEL_MAGIC 0x00000801
 #define MNIST_IMAGE_MAGIC 0x00000803
-#define MNIST_IMAGE_WIDTH 28
-#define MNIST_IMAGE_HEIGHT 28
+#define MNIST_IMAGE_WIDTH 10
+#define MNIST_IMAGE_HEIGHT 10
 #define MNIST_IMAGE_SIZE MNIST_IMAGE_WIDTH * MNIST_IMAGE_HEIGHT
 #define MNIST_LABELS 10
 #define PIXEL_SCALE(x) (((float) (x)) / 255.0f)
@@ -95,7 +95,7 @@ static float neural_network_hypothesis_v2(const mnist_image_t * image, const neu
     return -log(activations2[label]);
 }
 
-#define N 25
+#define N 15
 
 double dt = 0.001;
 
@@ -116,16 +116,21 @@ double ComputeU(double *x) {
 void top() {
 
     // mnist_image_t *x = (mnist_image_t *) 0x100200c0;
-    // neural_network_t *v =  (neural_network_t *) 0x10033980;
-    // mnist_image_t *x_grad = (mnist_image_t *) 0x10033cc0;
-    // uint8_t label = 1;
-    // __enzyme_autodiff<void>(neural_network_hypothesis_v2, enzyme_const, x, v, x_grad, label);
+    mnist_image_t *x = (mnist_image_t *) 0x80c00000;
 
-    volatile double * x = (double *)MAT;
-    // double *v = new double[N]
-    double *x_grad = (double *)(VEC);
+    neural_network_t *v =  (neural_network_t *) 0x80C003E8;
+    mnist_image_t *x_grad = (mnist_image_t *) 0x80C007D0;
+    uint8_t label = 1;
+    __enzyme_autodiff<void>(neural_network_hypothesis_v2, enzyme_const, x, v, x_grad, label);
 
-    // merge(tempBase, arrBase, tempBase);
-    // arrBase[0] = compute_U(1);
-    __enzyme_autodiff<double>(ComputeU, x, x_grad) ;
+    // volatile double * x = (double *)MAT;
+    // // volatile double * x = (double *)0x80C007D0;
+
+    // // double *v = new double[N]
+    // double *x_grad = (double *)(VEC);
+    // // double *x_grad = (double *)(0x80C003E8);
+
+    // // merge(tempBase, arrBase, tempBase);
+    // // arrBase[0] = compute_U(1);
+    // __enzyme_autodiff<double>(ComputeU, x, x_grad) ;
 }
