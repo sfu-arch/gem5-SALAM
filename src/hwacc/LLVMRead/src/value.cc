@@ -146,7 +146,7 @@ SALAM::Value::addRegister(llvm::Type *irtype, bool istracked) {
 
 void
 SALAM::Value::addPointerRegister(bool istracked, bool isnull) {
-    assert(valueTy == llvm::Type::PointerTyID);
+    // assert(valueTy == llvm::Type::PointerTyID);
     returnReg = std::make_shared<PointerRegister>(istracked, isnull);
 }
 void
@@ -183,7 +183,7 @@ SALAM::Value::addPointerRegister(uint64_t val, bool istracked, bool isnull) {
 void
 SALAM::Value::setRegisterValue(const uint64_t data) {
     if (returnReg->isPtr()) {
-        std::cerr << getIRStub() << " : " << getUID() << " : " << getIRString() << ": setting pointer register value " << std::hex << data  << std::endl;
+        std::cerr << getUID() << " : " << getIRString() << ": setting pointer register value " << std::hex << data  << std::endl;
         returnReg->writePtrData(data, ptr_size);
         DPRINTF(Runtime, "| Ptr Register\n");
         returnReg->writePtrData(data);

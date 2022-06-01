@@ -41,6 +41,8 @@ SALAM::Constant::initialize(llvm::Value * irval,
             auto api = in->getValue();
             addAPIntRegister(api.getLimitedValue());
         #endif
+        } else if (llvm::isa<llvm::UndefValue>(irval)) {
+            addPointerRegister(false, true);
         } else if (irtype->isPointerTy()) {
             assert(llvm::dyn_cast<llvm::ConstantPointerNull>(cd));
             addPointerRegister(false, true);
