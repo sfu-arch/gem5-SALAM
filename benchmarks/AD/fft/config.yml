@@ -1,0 +1,42 @@
+---
+acc_cluster:
+  - Name: fft_clstr
+  - DMA:
+    - Name: dma
+      MaxReqSize: 64
+      BufferSize: 128
+      PIOMaster: LocalBus
+      Type: NonCoherent
+      InterruptNum: 95
+  - Accelerator:
+    - Name: Top
+      IrPath: benchmarks/AD/fft/hw/top.ll
+      ConfigPath: benchmarks/AD/fft/hw/top.ini
+      PIOSize: 25
+      InterruptNum: 68
+      PIOMaster: LocalBus
+      # Local to PIO
+      LocalSlaves: LocalBus
+      Debug: False
+  - Accelerator:
+    - Name: fft
+      IrPath: benchmarks/AD/fft/hw/fft.ll
+      ConfigPath: benchmarks/AD/fft/hw/fft.ini
+      Debug: False
+      PIOSize: 1
+      PIOMaster: LocalBus
+    - Var:
+      - Name: MAT
+        Type: SPM
+        Size: 80000
+        Ports: 2
+    - Var:
+      - Name: VEC
+        Type: SPM
+        Size: 800
+        Ports: 2
+    - Var:
+      - Name: OUT
+        Type: SPM
+        Size: 1000
+        Ports: 2

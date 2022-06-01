@@ -1,0 +1,15 @@
+digraph G {
+	subgraph Forward {
+		"data : " -> "<badref> : 56 : invertentry" 
+		"data' : " -> "<badref> : 56 : invertentry" 
+		"len : " -> "<badref> : 56 : invertentry" 
+	}
+	subgraph Reverse {
+		"g<badref> : 56 : invertentry" -> "glen : "
+		"len : " -> "g<badref> : 56 : invertentry"
+		"g<badref> : 56 : invertentry" -> "gdata : "
+		"data : " -> "g<badref> : 56 : invertentry"
+		"g<badref> : 56 : invertentry" -> "gdata' : "
+		"data' : " -> "g<badref> : 56 : invertentry"
+	}
+}
