@@ -3,8 +3,12 @@ FLAGS=""
 
 BENCH=""
 DEBUG="false"
-PRINT_TO_FILE="false"
+PRINT_TO_FILE="true"
 VALGRIND="false"
+CACHE_SIZES=(512 1024 2048 4096 8192 16384 32768 65536)
+BIN_SCALES=(16 16 8 4 2)
+BIN_CONFIG_PATH="/localhome/mha157/gem5-SALAM/src/hwacc/bin_config.txt"
+# PY_FILE_PATH="/localhome/mha157/gem5-SALAM/1.txt"
 
 while getopts ":b:f:vdp" opt; do
 	case $opt in
@@ -70,8 +74,8 @@ SYS_OPTS="--mem-size=4GB \
           --disk-image=$M5_PATH/baremetal/common/fake.iso \
           --machine-type=VExpress_GEM5_V1 \
           --dtb-file=none --bare-metal \
-          --cpu-type=TimingSimpleCPU"
-CACHE_OPTS="--caches --l2cache --acc_cache"
+          --cpu-type=O3CPU"
+CACHE_OPTS="--caches --acc_cache"
 
 DEBUG_FLAGS=""
 
@@ -87,13 +91,31 @@ RUN_SCRIPT="$BINARY $DEBUG_FLAGS --outdir=$OUTDIR \
 
 # ${M5_PATH}/SALAM-Configurator/systembuilder.py --sysName $BENCH --benchDir "benchmarks/AD/${BENCH}"
 
-if [ "${PRINT_TO_FILE}" == "true" ]; then
-	mkdir -p $OUTDIR
-	$RUN_SCRIPT > ${OUTDIR}/debug-trace.txt
-else
-	$RUN_SCRIPT
-fi
 
+PY_FILE_PATH="/localhome/mha157/gem5-SALAM/configs/SALAM/generated/$BENCH.py"
+
+for t in ${CACHE_SIZES[@]}; do
+	sed -i '27d' $PY_FILE_PATH
+	sed -i '27i\	clstr._connect_caches(system, options, l2coherent=False, cache_size="'${t}'B")' $PY_FILE_PATH
+	sed -i '1d' $BIN_CONFIG_PATH
+	LINE="0,"
+	for u in ${BIN_SCALES[@]}; do
+		DIV=$((t/u))
+		LINE="${LINE}${DIV},"
+	done
+
+	echo $LINE >> $BIN_CONFIG_PATH
+
+	if [ "${PRINT_TO_FILE}" == "true" ]; then
+		mkdir -p $OUTDIR
+		$RUN_SCRIPT > ${OUTDIR}/debug-trace.txt > 2.txt 2>1.txt
+	else
+		$RUN_SCRIPT  > 2.txt 2>1.txt
+	fi
+	cp 2.txt $OUTDIR/SALAM_OUT_orig_${t}.txt
+	cp 1.txt $OUTDIR/log_orig_${t}.txt
+	python3 cache_stat_extractor.py ${BENCH}_orig $t  >> cache_result.csv
+done
 # Debug Flags List
 #
 # IOAcc

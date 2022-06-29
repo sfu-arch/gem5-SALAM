@@ -49,6 +49,7 @@
 #include <cassert>
 #include <cstdint>
 #include <string>
+#include <iostream>
 
 #include "base/addr_range.hh"
 #include "base/compiler.hh"
@@ -75,6 +76,8 @@
 #include "sim/serialize.hh"
 #include "sim/sim_exit.hh"
 #include "sim/system.hh"
+
+
 
 namespace gem5
 {
@@ -1284,10 +1287,15 @@ class BaseCache : public ClockedObject
         return mshrQueue.findMatch(addr, is_secure);
     }
 
+    void incGlobalMissVal();
+
     void incMissCount(PacketPtr pkt)
     {
         assert(pkt->req->requestorId() < system->maxRequestors());
         stats.cmdStats(pkt).misses[pkt->req->requestorId()]++;
+        // cache_misses++;
+        std::cerr << name() << ": MISS " << pkt->getAddr() << std::endl;
+
         pkt->req->incAccessDepth();
         if (missCount) {
             --missCount;
@@ -1295,8 +1303,13 @@ class BaseCache : public ClockedObject
                 exitSimLoop("A cache reached the maximum miss count");
         }
     }
+    void incGlobalHitVal();
     void incHitCount(PacketPtr pkt)
     {
+        // std::cerr << "incHitCount" << std::endl;
+        // cache_hits++;
+        std::cerr << name() << ": HIT " << pkt->getAddr() << std::endl;
+        
         assert(pkt->req->requestorId() < system->maxRequestors());
         stats.cmdStats(pkt).hits[pkt->req->requestorId()]++;
     }

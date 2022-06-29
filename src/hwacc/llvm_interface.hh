@@ -38,6 +38,8 @@
 #include "hwacc/LLVMRead/src/operand.hh"
 #include "hwacc/compute_unit.hh"
 #include "params/LLVMInterface.hh"
+#include "bin_hierarchy.hh"
+
 
 class LLVMInterface : public ComputeUnit {
   private:
@@ -90,7 +92,7 @@ class LLVMInterface : public ComputeUnit {
         bool returned = false;
         bool lockstep;
         bool dbg;
-
+        bool found_invert = false;
         inline bool uidActive(uint64_t id) {
           return computeUIDActive(id) || readUIDActive(id) || writeUIDActive(id);
         }
@@ -145,11 +147,11 @@ class LLVMInterface : public ComputeUnit {
                           dbg = owner->debug();
                        }
         // ADDED BY ME
+        void handlePop(SALAM::Instruction *inst);
         void handleMallocCall(int size);
         bool isMalloc(SALAM::Value* val) {
           return val->getIRStub().find("malloc") != std::string::npos;
         }
-
         void readCommit(MemoryRequest *req);
         void writeCommit(MemoryRequest *req);
         void findDynamicDeps(std::shared_ptr<SALAM::Instruction> inst);
@@ -182,9 +184,11 @@ class LLVMInterface : public ComputeUnit {
     // virtual bool debug() { return true; }
   public:
   // ADDED BY ME
+    bool binning = false;
+    BinHierarchy *bin_hierarchy = nullptr;
     std::map<std::string, std::vector<uint64_t> > address_map;
     void readAddressMap();
-
+    int getCycle() { return cycle; }
     PARAMS(LLVMInterface);
     LLVMInterface(const LLVMInterfaceParams &p);
     void tick();
@@ -202,6 +206,7 @@ class LLVMInterface : public ComputeUnit {
                         std::shared_ptr<SALAM::Instruction> caller);
     void launchTopFunction();
     void endFunction(ActiveFunction * afunc);
+    void launchRead(MemoryRequest * memReq);
     void launchRead(MemoryRequest * memReq, ActiveFunction * func);
     void launchWrite(MemoryRequest * memReq, ActiveFunction * func);
     std::shared_ptr<SALAM::Instruction> createInstruction(llvm::Instruction *inst,

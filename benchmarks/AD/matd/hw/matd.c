@@ -7,8 +7,8 @@
 #include <math.h>
 #include <inttypes.h>
 #include <string.h>
-#define N 30
-#define M 30
+#define N 100
+#define M 100
 
 extern int enzyme_const;
 template<typename Return, typename... T>
@@ -32,16 +32,16 @@ inline double matvec_real(double* mat, double* vec) {
   for(int i=0; i<N; i++) {
     sum += out[i] + out[i];
   }
-  free(out);
+  // free(out);
   return sum;
 }
 
 void top() {
 
     double *Min = (double *) 0x80C00A00;
-    double *Mout = (double *) 0x80C00A80;
-    double *Vin = (double *) 0x80C00B00;
-    double *Vout = (double *) 0x80C00B80;
+    double *Mout = (double *) ((uint64_t) Min + N * M * sizeof(double));
+    double *Vin =  (double *) ((uint64_t) Mout + N * M * sizeof(double));
+    double *Vout =  (double *) ((uint64_t) Vin + N * M * sizeof(double));
     __enzyme_autodiff<double>(matvec_real, Min, Mout, Vin, Vout);
 
 }

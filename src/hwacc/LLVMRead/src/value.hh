@@ -24,9 +24,16 @@ typedef std::vector<std::shared_ptr<Value>> valueListTy;
 class Value
 {
     public:
+        bool is_reverse = false;
         bool reading_value_from_map = false;
         void addRegister(llvm::Type *irtype, bool isTracked=true);
         std::string name_or_as_operand;
+        bool is_push_req = false;
+        bool is_pop_req = false;
+        bool is_read = false;
+        bool is_write = false;
+        uint32_t push_pop_count = 0;
+        bool is_unwrap = false;
     protected:
         uint64_t uid = 0;
         uint64_t size = 0;

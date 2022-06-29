@@ -1,6 +1,7 @@
 #include "instruction.hh"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/IR/DataLayout.h"
+#include "../../bin_hierarchy.hh"
 
 #include <cmath>
 
@@ -211,10 +212,11 @@ SALAM::Instruction::ready()
 bool
 SALAM::Instruction::launch()
 {
-    llvm::errs() << "Launching " << getIRString() << "\n";
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++launch()\n");
     // std::cerr << "||==launch================= " << getIRStub() << "\n";;
+    DPRINTF(Runtime, "||== FUS: %d\n", getFunctionalUnit() );
+    
     if (hasFunctionalUnit()) {
         if(!hw_interface->availableFunctionalUnit(getFunctionalUnit())) return false;
     }
@@ -236,6 +238,8 @@ SALAM::Instruction::launch()
 
         // compute();
     }
+    
+
     DPRINTF(Runtime, "||==Return: %s\n", isCommitted() ? "true" : "false");
     DPRINTF(Runtime, "||==launch================\n");
 
@@ -248,8 +252,12 @@ SALAM::Instruction::commit()
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++commit()\n");
     DPRINTF(Runtime, "||  Current Cycle: %i\n", getCurrentCycle());
-    if (getCurrentCycle() == getCycleCount()) { // Instruction ready to be committed
+    if (isLoad()) {
         std::cerr << "Commiting " << getIRString() << " -> " << getUID() << "\n";
+        if (is_read)
+            std::cerr << "is_read " << "\n";
+    }
+    if (getCurrentCycle() == getCycleCount() || is_read) { // Instruction ready to be committed
         signalUsers();
         committed = true;
         DPRINTF(Runtime, "||==Return: %s\n", committed ? "true" : "false");
@@ -263,7 +271,7 @@ SALAM::Instruction::commit()
     DPRINTF(Runtime, "||==Return: %s\n", committed ? "true" : "false");
     DPRINTF(Runtime, "||==commit================\n");
 
-    std::cerr << "Not Commiting " << getIRString() << "\n";
+    // std::cerr << "Not Commiting " << getIRString() << "\n";
     return false;
 }
 
@@ -306,20 +314,31 @@ SALAM::Instruction::linkOperands(const SALAM::Operand &newOp)
 //std::deque<uint64_t>
 std::vector<uint64_t>
 SALAM::Instruction::runtimeInitialize() {
+    // std::cerr << "Here 0-0" << std::endl;
+
     assert(getDependencyCount() == 0);
+    // std::cerr << "Here 0-1" << std::endl;
+
     //std::deque<uint64_t> dep_uids;
     std::vector<uint64_t> dep_uids;
 
     for (auto it = staticDependencies.begin(); it != staticDependencies.end(); ++it) {
+        // std::cerr << "Here 0-2" << std::endl;
+
         std::shared_ptr<SALAM::Value> static_dependency = *it;
+        // std::cerr << "static dep " << static_dependency->getIRString() << std::endl;
         auto dep_uid = static_dependency->getUID();
         operands.push_back(SALAM::Operand(static_dependency));
         if ((static_dependency->isConstant()) || (static_dependency->isArgument())) {
+
             operands.back().updateOperandRegister();
+
         } else {
             dep_uids.push_back(dep_uid);
         }
     }
+    // std::cerr << "Here 0-3" << std::endl;
+
     // dep_uids.push_back(uid);
 
     return dep_uids;
@@ -3398,8 +3417,7 @@ void
 BitCast::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    llvm::errs() << "Bitcasting " << *irval << " - " << *((llvm::Instruction *)irval)->getOperand(0)  << " -> " <<
-     (*irmap)[((llvm::Instruction *)irval)->getOperand(0)].get()->getIRStub() << "\n";
+    //  (*irmap)[((llvm::Instruction *)irval)->getOperand(0)].get()->getIRStub() << "\n";
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
@@ -3830,17 +3848,20 @@ Phi::initialize(llvm::Value * irval,
 //std::deque<uint64_t>
 std::vector<uint64_t>
 Phi::runtimeInitialize() {
+    // std::cerr << "Here 0-0" << std::endl;
+
     assert(getDependencyCount() == 0);
     //std::deque<uint64_t> dep_uids;
     std::vector<uint64_t> dep_uids;
     std::shared_ptr<SALAM::Value> static_dependency;
-
+    
     auto it = phiArgs.find(previousBB);
     if (it != phiArgs.end()) static_dependency = it->second;
     else assert(0 && "Previous BasicBlock not found in PHI args");
 
     auto dep_uid = static_dependency->getUID();
     operands.push_back(SALAM::Operand(static_dependency));
+
     if ((static_dependency->isConstant()) || (static_dependency->isArgument())) {
         operands.back().updateOperandRegister();
     } else {

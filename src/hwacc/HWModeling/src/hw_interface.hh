@@ -23,6 +23,7 @@ using namespace gem5;
 class HWInterface : public SimObject 
 {
     friend class LLVMInterface;
+    friend class ActiveFunction;
     private:
         CycleCounts *cycle_counts;
         FunctionalUnits *functional_units;

@@ -12,7 +12,7 @@ from m5.objects.NoncoherentDma import NoncoherentDma
 from m5.objects.StreamDma import StreamDma
 
 class ClusterCache(Cache):
-    assoc = 8
+    assoc = 4
     tag_latency = 20
     data_latency = 20
     response_latency = 20
@@ -26,7 +26,7 @@ class AccCluster(Platform):
     system = Param.System(Parent.any, "system")
 
     # System Cache Parameter
-    cache_size = Param.String('32kB', "cache size in bytes")
+    cache_size = Param.String('1kB', "cache size in bytes")
     local_range_min = Param.Unsigned(0x2f000000, "minimal address of local range")
     local_range_max = Param.Unsigned(0x7fffffff, "maximum address of local range")
     external_range_low_min = Param.Unsigned(0x00000000, "minimal address of external range low")
