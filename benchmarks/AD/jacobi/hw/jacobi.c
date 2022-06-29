@@ -27,7 +27,7 @@
 *************************************************************************/
 
 #define DATA_TYPE double
-#define N 100
+#define N 50
 
 extern int enzyme_const;
 template<typename Return, typename... T>
@@ -40,18 +40,17 @@ extern "C" {
 /* Main computational kernel. The whole function will be timed,
    including the call and return. */
 static
-void kernel_jacobi_2d(DATA_TYPE **A,DATA_TYPE **B)
+void kernel_jacobi_2d(DATA_TYPE **A, DATA_TYPE **B)
 {
-  int t, i, j;
-for (i = 1; i < N - 1; i++)
-    for (j = 1; j < N - 1; j++)
-        B[i][j] = (0.2) * (A[i][j] + A[i][j-1] + A[i][1+j] + A[1+i][j] + A[i-1][j]);
-for (i = 1; i < N - 1; i++)
-    for (j = 1; j < N - 1; j++)
-        A[i][j] = (0.2) * (B[i][j] + B[i][j-1] + B[i][1+j] + B[1+i][j] + B[i-1][j]);
+    int t, i, j;
+    for (i = 1; i < N - 1; i++)
+        for (j = 1; j < N - 1; j++)
+            B[i][j] = (0.2) * (A[i][j] + A[i][j-1] + A[i][1+j] + A[1+i][j] + A[i-1][j]);
+    for (i = 1; i < N - 1; i++)
+        for (j = 1; j < N - 1; j++)
+            A[i][j] = (0.2) * (B[i][j] + B[i][j-1] + B[i][1+j] + B[1+i][j] + B[i-1][j]);
 
 }
-
 
 void top() {
 
@@ -79,5 +78,4 @@ void top() {
   /* Be clean. */
   free(A[0]); free(A);
   free(B[0]); free(B);
-
 }
