@@ -39,7 +39,6 @@ class CommInterface : public BasicPioDevice
     class MemSidePort : public StreamRequestPort
     {
       friend class CommInterface;
-
       private:
         CommInterface *owner;
         std::queue<PacketPtr> outstandingPkts;

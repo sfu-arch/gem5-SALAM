@@ -101,6 +101,7 @@ class Instruction : public Value
         virtual bool isInstruction() { return true; }
         virtual bool isLoadingInternal() { return false; }
         virtual bool isLatchingBrExiting() { return false; }
+        virtual bool isBadInstruction() { return false; }
         // virtual void linkFunctionalUnit(HWInterface * hw_interface);
         std::shared_ptr<SALAM::Instruction> clone() const { return std::static_pointer_cast<SALAM::Instruction>(createClone()); }
         virtual std::shared_ptr<SALAM::Value> createClone() const override { return std::shared_ptr<SALAM::Instruction>(new SALAM::Instruction(*this)); }
@@ -132,7 +133,16 @@ class BadInstruction : public Instruction {
                 irvmap * irmap,
                 SALAM::valueListTy * valueList);
         std::shared_ptr<SALAM::BadInstruction> clone() const { return std::static_pointer_cast<SALAM::BadInstruction>(createClone()); }
-        virtual std::shared_ptr<SALAM::Value> createClone() const override { return std::shared_ptr<SALAM::BadInstruction>(new SALAM::BadInstruction(*this)); }
+        virtual std::shared_ptr<SALAM::Value> createClone() const override { 
+            auto ptr = std::shared_ptr<SALAM::BadInstruction>(new SALAM::BadInstruction(*this));
+            ptr->is_pop_req = is_pop_req;
+            ptr->is_push_req = is_push_req;
+            ptr->push_pop_count = push_pop_count;
+            ptr->is_write  = is_write;
+            ptr->is_read = is_read;
+            return ptr;
+            }
+        virtual bool isBadInstruction() { return true; }
 };
 
 
@@ -845,7 +855,12 @@ class Load : public Instruction {
         void dumper();
         bool isLoadingInternal() { return loadingInternal; }
         std::shared_ptr<SALAM::Load> clone() const { return std::static_pointer_cast<SALAM::Load>(createClone()); }
-        virtual std::shared_ptr<SALAM::Value> createClone() const override { return std::shared_ptr<SALAM::Load>(new SALAM::Load(*this)); }
+        virtual std::shared_ptr<SALAM::Value> createClone() const override { 
+            auto ptr = std::shared_ptr<SALAM::Load>(new SALAM::Load(*this));
+            ptr->is_read = is_read;
+            ptr->is_reverse = is_reverse;
+            return ptr;
+        }
 
         MemoryRequest * createMemoryRequest() override;
 };
@@ -879,7 +894,12 @@ class Store : public Instruction {
         void dump() { if (dbgr->enabled()) { dumper(); inst_dbg->dumper(static_cast<SALAM::Instruction*>(this));}}
         void dumper();
         std::shared_ptr<SALAM::Store> clone() const { return std::static_pointer_cast<SALAM::Store>(createClone()); }
-        virtual std::shared_ptr<SALAM::Value> createClone() const override { return std::shared_ptr<SALAM::Store>(new SALAM::Store(*this)); }
+        virtual std::shared_ptr<SALAM::Value> createClone() const override { 
+            auto ptr = std::shared_ptr<SALAM::Store>(new SALAM::Store(*this));
+            ptr->is_write = is_write;
+            ptr->is_reverse = is_reverse;
+            return ptr;
+        }
 
         MemoryRequest * createMemoryRequest() override;
 };

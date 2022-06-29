@@ -1,0 +1,3 @@
+benchmark,cache_size,fw_cluster_cache_hits,fw_cluster_cache_misses,fw_cluster_total,rev_cluster_cache_hits,rev_cluster_cache_misses,rev_cluster_total,fw_dram_access,rev_dram_access,total_dram_access,fw_cycles,rev_cycles,total_cycles,fw_bw(MB),rev_bw(MB),total_bw(MB),bin_zero_read_count,bin_zero_bw(MB)
+gravity_orig_pure,512,9686,412,10098,14299,873,15172,412,0,412,143062,181500,324562,18.4,0.0,8.1,14850,4.6
+gravity_orig_total,512,9686,412,10098,14299,873,15172,412,873,1285,143062,181500,324562,18.4,30.8,25.3,14850,4.6

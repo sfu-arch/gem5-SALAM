@@ -22,20 +22,21 @@ SALAM::Value::Value(const Value &copy_val)
     ir_stub = copy_val.ir_stub;
     ptr_size = copy_val.ptr_size;
     reading_value_from_map = copy_val.reading_value_from_map;
+    is_unwrap = copy_val.is_unwrap;
 
 }
 
 SALAM::Value::Value(std::shared_ptr<SALAM::Value> copy_val)
 {
-      uid = copy_val->getUID();
-      returnReg = copy_val->getReg();
+    uid = copy_val->getUID();
+    returnReg = copy_val->getReg();
     valueTy = copy_val->getType();
     size = copy_val->getSize();
     ir_string = copy_val->getIRString();
     ir_stub = copy_val->getIRStub();
     ptr_size = copy_val->getPtrSize();
     reading_value_from_map = copy_val.get()->reading_value_from_map;
-
+    is_unwrap = copy_val.get()->is_unwrap;
 
 }
 
@@ -50,6 +51,8 @@ SALAM::Value::operator = (Value &copy_val)
     ir_string = copy_val.ir_string;
     ir_stub = copy_val.ir_stub;
     reading_value_from_map = copy_val.reading_value_from_map;
+    is_unwrap = copy_val.is_unwrap;
+
     return *this;
 }
 
@@ -83,6 +86,8 @@ SALAM::Value::initialize(llvm::Value * irval, SALAM::irvmap * irmap) {
     llvm::raw_string_ostream ss2(tmpStr2);
     irval->printAsOperand(ss2);
     ir_stub = ss2.str();
+
+
 }
 
 void
