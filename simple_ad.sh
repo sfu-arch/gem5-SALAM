@@ -75,7 +75,7 @@ SYS_OPTS="--mem-size=4GB \
           --disk-image=$M5_PATH/baremetal/common/fake.iso \
           --machine-type=VExpress_GEM5_V1 \
           --dtb-file=none --bare-metal \
-          --cpu-type=TimingSimpleCPU"
+          --cpu-type=DerivO3CPU"
 CACHE_OPTS="--caches --acc_cache"
 
 DEBUG_FLAGS=""

@@ -8,7 +8,7 @@
 #include <inttypes.h>
 #include <string.h>
 
-#define N 512
+#define N 256
 
 extern "C" {
     void top();

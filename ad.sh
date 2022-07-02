@@ -7,6 +7,7 @@ PRINT_TO_FILE="true"
 VALGRIND="false"
 CACHE_SIZES=(512 1024 2048 4096 8192 16384 32768 65536)
 BIN_SCALES=(16 16 8 4 2)
+MODES=("ad" "orig")
 BIN_CONFIG_PATH="/localhome/mha157/gem5-SALAM/src/hwacc/bin_config.txt"
 # PY_FILE_PATH="/localhome/mha157/gem5-SALAM/1.txt"
 
@@ -103,15 +104,14 @@ for t in ${CACHE_SIZES[@]}; do
 		DIV=$((t/u))
 		LINE="${LINE}${DIV},"
 	done
-
 	echo $LINE >> $BIN_CONFIG_PATH
-
 	if [ "${PRINT_TO_FILE}" == "true" ]; then
 		mkdir -p $OUTDIR
-		$RUN_SCRIPT > ${OUTDIR}/debug-trace.txt > 2.txt 2>1.txt
+		$RUN_SCRIPT > ${OUTDIR}/debug-trace.txt > 2.txt 2> 1.txt
 	else
-		$RUN_SCRIPT  > 2.txt 2>1.txt
+		$RUN_SCRIPT  > 2.txt 2> 1.txt
 	fi
+	echo "Done with cache size: ${t}"
 	cp 2.txt $OUTDIR/SALAM_OUT_orig_${t}.txt
 	cp 1.txt $OUTDIR/log_orig_${t}.txt
 	python3 cache_stat_extractor.py ${BENCH}_orig $t  >> cache_result.csv
