@@ -27,7 +27,7 @@
 *************************************************************************/
 
 #define DATA_TYPE double
-#define N 50
+#define N 10
 
 extern int enzyme_const;
 template<typename Return, typename... T>
@@ -46,9 +46,9 @@ void kernel_jacobi_2d(DATA_TYPE **A, DATA_TYPE **B)
     for (i = 1; i < N - 1; i++)
         for (j = 1; j < N - 1; j++)
             B[i][j] = (0.2) * (A[i][j] + A[i][j-1] + A[i][1+j] + A[1+i][j] + A[i-1][j]);
-    for (i = 1; i < N - 1; i++)
-        for (j = 1; j < N - 1; j++)
-            A[i][j] = (0.2) * (B[i][j] + B[i][j-1] + B[i][1+j] + B[1+i][j] + B[i-1][j]);
+    // for (i = 1; i < N - 1; i++)
+    //     for (j = 1; j < N - 1; j++)
+    //         A[i][j] = (0.2) * (B[i][j] + B[i][j-1] + B[i][1+j] + B[1+i][j] + B[i-1][j]);
 
 }
 
@@ -65,17 +65,23 @@ void top() {
   A_grad = (DATA_TYPE **)malloc(N * sizeof(DATA_TYPE *));
   B = (DATA_TYPE **)malloc(N * sizeof(DATA_TYPE *));
   B_grad = (DATA_TYPE **)malloc(N * sizeof(DATA_TYPE *));
-  for (int i = 0; i < N; i++) {
-    A[i] = (DATA_TYPE *)malloc(N * sizeof(DATA_TYPE));
-    B[i] = (DATA_TYPE *)malloc(N * sizeof(DATA_TYPE));
-    A_grad[i] = (DATA_TYPE *)malloc(N * sizeof(DATA_TYPE));
-    B_grad[i] = (DATA_TYPE *)malloc(N * sizeof(DATA_TYPE));
-  }
+
+  // A = (DATA_TYPE ** )0x80c00000;
+  // A_grad = (DATA_TYPE ** ) ((uint64_t) A + N * N * sizeof(DATA_TYPE));
+  // B = (DATA_TYPE ** )((uint64_t) A_grad + N * N * sizeof(DATA_TYPE));
+  // B_grad = (DATA_TYPE ** )((uint64_t) B + N * N * sizeof(DATA_TYPE));
+
+  // for (int i = 0; i < N; i++) {
+  //   A[i] = (DATA_TYPE *)malloc(N * sizeof(DATA_TYPE));
+  //   B[i] = (DATA_TYPE *)malloc(N * sizeof(DATA_TYPE));
+  //   A_grad[i] = (DATA_TYPE *)malloc(N * sizeof(DATA_TYPE));
+  //   B_grad[i] = (DATA_TYPE *)malloc(N * sizeof(DATA_TYPE));
+  // }
 
   /* Run kernel. */
   // kernel_jacobi_2d(1, n, A, B);
   __enzyme_autodiff<void>(kernel_jacobi_2d, A, A_grad, B, B_grad);
   /* Be clean. */
-  free(A[0]); free(A);
-  free(B[0]); free(B);
+  // free(A[0]); free(A);
+  // free(B[0]); free(B);
 }
