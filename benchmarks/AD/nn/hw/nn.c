@@ -81,13 +81,13 @@ static double neural_network_hypothesis_v2(mnist_image_t * image, neural_network
 // #pragma clang loop unroll(full)
     for (i = 0; i < MNIST_LABELS; i++) {
         activations[i] = network->b[i];
-// #pragma clang loop unroll(full)
+#pragma clang loop unroll_count(8)
         for (j = 0; j < MNIST_IMAGE_SIZE; j++) {
             activations[i] += network->W[i][j] * PIXEL_SCALE(image->pixels[j]);
         }
     }
  
-    double *activations2 = (double *) 0x80c7a120;
+    double *activations2 = (double *) 0x80caa120;
     // double *activations2 = (double *) malloc(MNIST_LABELS * sizeof(double));
 
     // double activations2[MNIST_LABELS] = { 0 };
@@ -96,7 +96,6 @@ static double neural_network_hypothesis_v2(mnist_image_t * image, neural_network
 }
 
 void top() {
-
     mnist_image_t *x = (mnist_image_t *) 0x80c00000;
 
     neural_network_t *v =  (neural_network_t *) ((uint64_t) x + sizeof(mnist_image_t));

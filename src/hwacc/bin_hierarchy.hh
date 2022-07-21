@@ -97,7 +97,7 @@ class BinHierarchy {
         bins.push_back(new IBin(i, sizes[i], this));
         bins[i-1]->next_bin = bins[i];
       }
-      last_bin = new IBin(count, 1000000, this);
+      last_bin = new IBin(count, 100000000, this);
     }
 
   class IBin {
@@ -106,7 +106,7 @@ class BinHierarchy {
       IBin(uint32_t id, BinHierarchy* h): IBin(id, 10, h) {}
       void push(Bundle *bundle) {
         if (capacity < bundle->size) {
-          handleSpill(bundle);       
+          handleSpill(bundle->size);       
         } else {
           std::cerr << id << " : Didn't spill" << std::endl;;
         }
@@ -132,8 +132,8 @@ class BinHierarchy {
         // TODO: handle fill requests from the next bin
       }
 
-      void handleSpill(Bundle *bundle) {
-        while (capacity < bundle->size) {
+      void handleSpill(int size) {
+        while (capacity < size && current_bundles.size() > 0) {
           if (next_bin) {   // spill to next bin
             std::cerr << "Spilling from " << id  << " to " << id + 1 << ", count: " << current_bundles.front()->size << std::endl;
             next_bin->push(current_bundles.front());
@@ -171,6 +171,7 @@ class BinHierarchy {
     Bundle *bundle = new Bundle(last_bundle_id++, count);
     bundle_map[bundle->id] = bundle;
     bins[0]->push(bundle);
+    std::cerr << "Push Done " << std::endl;
   }
 
   void pop() {

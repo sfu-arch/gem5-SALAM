@@ -164,6 +164,9 @@ SALAM::Instruction::signalUsers()
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++signalUsers()\n");
     uint64_t count = 0;
     for (auto user : dynamicUsers) {
+        if (is_read || is_write) {
+            std::cerr << "User : " << user->getIRString() << "\n";
+        }
         DPRINTF(Runtime, "|| User[%i] =============\n", count);
         if(DTRACE(SALAM_Debug)) {
             user->dump();
@@ -216,6 +219,8 @@ SALAM::Instruction::launch()
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++launch()\n");
     // std::cerr << "||==launch================= " << getIRStub() << "\n";;
     DPRINTF(Runtime, "||== FUS: %d\n", getFunctionalUnit() );
+    std::cerr << "FUNCTIONAL UNIT : " << functional_unit << "\n";
+    std::cerr << "hasFunctionalUnit : " << hasFunctionalUnit() << "\n";
     
     if (hasFunctionalUnit()) {
         if(!hw_interface->availableFunctionalUnit(getFunctionalUnit())) return false;

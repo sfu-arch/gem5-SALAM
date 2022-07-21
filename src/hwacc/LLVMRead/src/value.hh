@@ -34,6 +34,8 @@ class Value
         bool is_write = false;
         uint32_t push_pop_count = 0;
         bool is_unwrap = false;
+        std::shared_ptr<SALAM::Register> returnReg;
+
     protected:
         uint64_t uid = 0;
         uint64_t size = 0;
@@ -41,7 +43,6 @@ class Value
         std::string ir_string;
         std::string ir_stub;
         llvm::Type::TypeID valueTy;
-        std::shared_ptr<SALAM::Register> returnReg;
         bool dbg = false;
         bool inst = false;
 

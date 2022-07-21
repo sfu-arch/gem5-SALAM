@@ -1,3 +1,4 @@
+from distutils.command.config import config
 import m5
 from m5.objects import *
 from m5.util import *
@@ -44,6 +45,7 @@ def AccConfig(acc, config_file, bench_file):
     acc.hw_interface = HWInterface()
     acc.hw_interface.cycle_counts = CycleCounts()
     acc.hw_interface.functional_units = FunctionalUnits()
+
     #acc.hw_interface.functional_units.int_adder = Adder()
     acc.hw_interface.inst_config = InstConfig()
     #acc.hw_interface.inst_config.add_config = Add()

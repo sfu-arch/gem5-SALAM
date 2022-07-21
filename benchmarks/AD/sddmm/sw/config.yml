@@ -1,0 +1,27 @@
+---
+acc_cluster:
+  - Name: sddmm_clstr
+  - DMA:
+    - Name: dma
+      MaxReqSize: 64
+      BufferSize: 128
+      PIOMaster: LocalBus
+      Type: NonCoherent
+      InterruptNum: 95
+  - Accelerator:
+    - Name: Top
+      IrPath: benchmarks/sys_validation/sddmm/hw/top.ll
+      ConfigPath: benchmarks/sys_validation/sddmm/hw/top.ini
+      PIOSize: 25
+      InterruptNum: 68
+      PIOMaster: LocalBus
+      # Local to PIO
+      LocalSlaves: LocalBus
+      Debug: False
+  - Accelerator:
+    - Name: sddmm
+      IrPath: benchmarks/sys_validation/sddmm/hw/sddmm.ll
+      ConfigPath: benchmarks/sys_validation/sddmm/hw/sddmm.ini
+      Debug: False
+      PIOSize: 10
+      PIOMaster: LocalBus

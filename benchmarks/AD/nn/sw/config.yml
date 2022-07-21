@@ -29,14 +29,14 @@ acc_cluster:
       - Name: MAT
         Type: SPM
         Size: 80000
-        Ports: 2
+        Ports: 100
     - Var:
       - Name: VEC
         Type: SPM
-        Size: 800
-        Ports: 2
+        Size: 80000
+        Ports: 100
     - Var:
       - Name: OUT
         Type: SPM
-        Size: 800
+        Size: 80000
         Ports: 2
