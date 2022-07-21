@@ -117,12 +117,12 @@ uint64_t createMallocBaseAddress(int size)
 void
 LLVMInterface::ActiveFunction::handleMallocCall(int size)
 {
-    std::cerr << "Handling malloc call" << std::endl;
     if (caller->getSize() > 0) {
-        auto reg = std::make_shared<SALAM::PointerRegister>(false);
         SALAM::Value callee_return_val(func->getUID());
-        callee_return_val.addRegister(func->return_type) ;
-        callee_return_val.setRegisterValue((const uint64_t) createMallocBaseAddress(size));
+        callee_return_val.returnReg = std::make_shared<SALAM::PointerRegister>();
+        
+        const uint64_t addr = createMallocBaseAddress(size);
+        callee_return_val.setRegisterValue(addr);
         // auto retOperand = SALAM::Operand(callee_return_val);
         std::cerr << "callee_return_val: " << callee_return_val.getPtrRegValue()  << func->getUID() << std::endl;
         caller->setRegisterValue(callee_return_val.getPtrRegValue());
@@ -171,7 +171,7 @@ void LLVMInterface::readAddressMap() {
 void LLVMInterface::ActiveFunction::handlePop(SALAM::Instruction *inst) {
     std::cerr << "Launching pop " << inst->getIRStub() << " count: " << inst->push_pop_count << "\n";
     owner->bin_hierarchy->pop();
-
+    std::cerr << "CycleCounts: " << owner->getCycle() << std::endl;
     // if (!addrs.empty()) {
     //     for (auto addr : addrs) {
     //         MemoryRequest * mem_req = new MemoryRequest(addr, 8);
@@ -185,6 +185,47 @@ void LLVMInterface::ActiveFunction::handlePop(SALAM::Instruction *inst) {
     //     }
     // }
 }
+
+void
+LLVMInterface::ActiveFunction::handlePushPopDependency(std::shared_ptr<SALAM::Instruction> inst) {
+    auto queue_iter = reservation.rbegin();
+    while ((queue_iter != reservation.rend())) {
+        auto queued_inst = *queue_iter;
+        // Look at each instruction in runtime queue once
+        if (queued_inst->is_push_req || queued_inst->is_pop_req || queued_inst->is_read || queued_inst->is_write) {
+            inst->addRuntimeDependency(queued_inst);
+            queued_inst->addRuntimeUser(inst);
+            std::cerr << "Adding push-pop dependency: " << inst->getIRString() << " -> " << queued_inst->getIRString() << std::endl;
+            // break;
+        }
+        queue_iter++;
+    }
+}
+void
+LLVMInterface::ActiveFunction::handleReadWriteDependency(std::shared_ptr<SALAM::Instruction> inst) {
+    auto queue_iter = reservation.rbegin();
+    while ((queue_iter != reservation.rend())) {
+        auto queued_inst = *queue_iter;
+        // Look at each instruction in runtime queue once
+        if (queued_inst->is_push_req || queued_inst->is_pop_req) {
+            if (std::next(queue_iter) != reservation.rend()) {
+                auto next_inst = *(std::next(queue_iter));
+                inst->addRuntimeDependency(next_inst);
+                next_inst->addRuntimeUser(inst);
+            } else if (std::prev(queue_iter) != reservation.rbegin()) {
+                auto prev_inst = *(std::prev(queue_iter));
+                inst->addRuntimeDependency(prev_inst);
+                prev_inst->addRuntimeUser(inst);
+            }
+            inst->addRuntimeDependency(queued_inst);
+            queued_inst->addRuntimeUser(inst);
+            std::cerr << "Adding read-write dependency: " << inst->getIRString() << " -> " << queued_inst->getIRString() << std::endl;
+            break;
+        }
+        queue_iter++;
+    }
+}
+
 
 void
 LLVMInterface::ActiveFunction::processQueues()
@@ -219,6 +260,12 @@ LLVMInterface::ActiveFunction::processQueues()
         // func->removeInstance();
         caller->commit();
         // return;
+    } else if (isRealloc(func.get())) {
+        auto alloc_size = func->getArguments()->at(1).get()->getIntRegValue();
+        std::cerr << "Processing Realloc " << func->getIRStub() << " Realloc size: " << alloc_size << std::endl;
+        handleMallocCall(alloc_size);
+        // func->removeInstance();
+        caller->commit();
     } else if (canReturn()) {
         // Handle function return
         DPRINTFR(Runtime, "[[Function Return]]\n\n");
@@ -244,6 +291,7 @@ LLVMInterface::ActiveFunction::processQueues()
                 DPRINTFR(Runtime, "Debug Breakpoint");
             auto inst = *queue_iter;
             if (owner->bin_hierarchy != nullptr) {
+                // Making sure that previous pushes are complete
                 if (inst->is_push_req) {
                     std::cerr << "Launching push " << inst->getIRStub() << "count: " << inst->push_pop_count << "\n";
                     uint32_t count = inst->push_pop_count;
@@ -265,26 +313,8 @@ LLVMInterface::ActiveFunction::processQueues()
                     queue_iter = reservation.erase(queue_iter);
                     continue;
                 } 
-                // else if (!inst->isStore()  && !inst->isLoad() && inst->is_unwrap) {
-                //     std::cerr << "skipping unwrap " << inst->getIRStub() << "\n";
-                //     inst->commit();
-                //     queue_iter = reservation.erase(queue_iter);
-                //     continue;
-                // }
             } 
-            // if (inst->isLoad() && inst->is_reverse && !inst->is_read) {
-            //     std::cerr << "Skipping read " << inst->getIRStub() << "\n";
-            //     inst->commit();
-            //     queue_iter = reservation.erase(queue_iter);
-            //     continue;
-            // }
-            // if (inst->isStore() && inst->is_reverse) {
-            //     std::cerr << "skipping write " << inst->getIRStub() << "\n";
-            //     inst->commit();
-            //     queue_iter = reservation.erase(queue_iter);
-            //     queue_iter++;
-            //     continue;
-            // }
+       
 
             DPRINTFR(Runtime, "\n\t\t %s \n\t\t %s%s%s%d%s \n",
                 " |-[Reserve Queue]--------------",
@@ -493,13 +523,17 @@ LLVMInterface::ActiveFunction::findDynamicDeps(std::shared_ptr<SALAM::Instructio
     // The list of UIDs for any dependencies we want to find
     //std::deque<uint64_t> dep_uids = inst->runtimeInitialize();
     std::vector<uint64_t> dep_uids = inst->runtimeInitialize();
-
     // assert(inst->getDependencyCount() == 0);
 
     // // An instruction is a runtime dependency for itself since multiple
     // // instances of the same instruction shouldn't execute simultaneously
     // // dep_uids.push_back(inst->getUID());
-
+    if (owner->bin_hierarchy != nullptr) {
+        if (inst->is_push_req || inst->is_pop_req)
+            handlePushPopDependency(inst);
+        if (inst->is_read || inst->is_write)
+            handleReadWriteDependency(inst);
+    }
     // Find dependencies currently in queues
     if (inst->isLoad()) {
         std::cerr << "Load: " << inst->getUID() << " " << inst->getIRString() << std::endl;
@@ -654,6 +688,9 @@ LLVMInterface::dumpModule(llvm::Module *M) {
 }
 
 
+bool functionNameContains(llvm::Function *func_iter, std::string name) {
+    return func_iter->getName().find(name) != std::string::npos;
+}
 
 void
 LLVMInterface::constructStaticGraph() {
@@ -697,13 +734,14 @@ LLVMInterface::constructStaticGraph() {
         vmap.insert(SALAM::irvmaptype(&glb, sglb));
         valueID++;
     }
+
     // Generate SALAM::Functions
     DPRINTF(LLVMInterface, "Instantiate SALAM::Functions\n");
     for (auto func_iter = m->begin(); func_iter != m->end(); func_iter++) {
         llvm::Function &func = *func_iter;
         std::shared_ptr<SALAM::Function> sfunc = std::make_shared<SALAM::Function>(valueID);
         // if the function is malloc, don't skip it since I'm gonna handle it differently
-        if ((!sfunc.get() || func_iter->isDeclaration()) && func_iter->getName().find("malloc") == std::string::npos) {
+        if ((!sfunc.get() || func_iter->isDeclaration()) && !(functionNameContains(&func, "malloc") || functionNameContains(&func, "realloc"))) {
         // if ((!sfunc.get() || func_iter->isDeclaration())) {
             llvm::errs() << "function err: " << func_iter->getName() << "\n";
             continue;
@@ -806,15 +844,15 @@ LLVMInterface::constructStaticGraph() {
         }
         assert(sfunc);
         sfunc->initialize(&func, &vmap, &values, topName);
-        for (auto &bb: func) {
-            for (auto &inst: bb) {
-                if (vmap.count(&inst) && value_map.count(inst.getNameOrAsOperand())) {
-                    llvm::errs() << "getting value of " << vmap[&inst].get()->getUID() << " from value map." << "\n";
-                    vmap[&inst].get()->setRegisterValue(value_map[inst.getNameOrAsOperand()]);
-                    vmap[&inst].get()->reading_value_from_map = true;
-                }
-            }
-        }
+        // for (auto &bb: func) {
+        //     for (auto &inst: bb) {
+        //         if (vmap.count(&inst) && value_map.count(inst.getNameOrAsOperand())) {
+        //             llvm::errs() << "getting value of " << vmap[&inst].get()->getUID() << " from value map." << "\n";
+        //             vmap[&inst].get()->setRegisterValue(value_map[inst.getNameOrAsOperand()]);
+        //             vmap[&inst].get()->reading_value_from_map = true;
+        //         }
+        //     }
+        // }
     }
     if (functions.size() == 1) functions.front()->setTop(true);
     // Detect Loop Latches
@@ -1243,7 +1281,7 @@ void LLVMInterface::ActiveFunction::launch() {
 
     func->addInstance();
     // Schedule the first BB
-    if (!isMalloc(func.get()))
+    if (!isMalloc(func.get()) && !isRealloc(func.get()))
         scheduleBB(func->entry());
 
 }
@@ -1266,14 +1304,14 @@ LLVMInterface::createInstruction(llvm::Instruction * inst, uint64_t id) {
         case llvm::Instruction::Br: return SALAM::createBrInst(id, OpCode, cost + hw->cycle_counts->br_inst); break;
         case llvm::Instruction::Switch: return SALAM::createSwitchInst(id, OpCode, cost + hw->cycle_counts->switch_inst); break;
         case llvm::Instruction::Add: return SALAM::createAddInst(id, OpCode, cost + hw->cycle_counts->add_inst); break;
-        case llvm::Instruction::FAdd: return SALAM::createFAddInst(id, OpCode, cost + hw->cycle_counts->fadd_inst + 1); break;
+        case llvm::Instruction::FAdd: return SALAM::createFAddInst(id, OpCode, cost + hw->cycle_counts->fadd_inst); break;
         case llvm::Instruction::Sub: return SALAM::createSubInst(id, OpCode, cost + hw->cycle_counts->sub_inst); break;
-        case llvm::Instruction::FSub: return SALAM::createFSubInst(id, OpCode, cost + hw->cycle_counts->fsub_inst + 1); break;
+        case llvm::Instruction::FSub: return SALAM::createFSubInst(id, OpCode, cost + hw->cycle_counts->fsub_inst); break;
         case llvm::Instruction::Mul: return SALAM::createMulInst(id, OpCode, cost + hw->cycle_counts->mul_inst); break;
-        case llvm::Instruction::FMul: return SALAM::createFMulInst(id, OpCode, cost + hw->cycle_counts->fmul_inst + 1); break;
+        case llvm::Instruction::FMul: return SALAM::createFMulInst(id, OpCode, cost + hw->cycle_counts->fmul_inst); break;
         case llvm::Instruction::UDiv: return SALAM::createUDivInst(id, OpCode, cost + hw->cycle_counts->udiv_inst); break;
         case llvm::Instruction::SDiv: return SALAM::createSDivInst(id, OpCode, cost + hw->cycle_counts->sdiv_inst); break;
-        case llvm::Instruction::FDiv: return SALAM::createFDivInst(id, OpCode, cost + hw->cycle_counts->fdiv_inst + 1); break;
+        case llvm::Instruction::FDiv: return SALAM::createFDivInst(id, OpCode, cost + hw->cycle_counts->fdiv_inst); break;
         case llvm::Instruction::URem: return SALAM::createURemInst(id, OpCode, cost + hw->cycle_counts->urem_inst); break;
         case llvm::Instruction::SRem: return SALAM::createSRemInst(id, OpCode, cost + hw->cycle_counts->srem_inst); break;
         case llvm::Instruction::FRem: return SALAM::createFRemInst(id, OpCode, cost + hw->cycle_counts->frem_inst); break;
@@ -1306,7 +1344,7 @@ LLVMInterface::createInstruction(llvm::Instruction * inst, uint64_t id) {
         default: {
             warn("Tried to create instance of undefined instruction type!"); 
             llvm::errs() <<  *inst << " is not a valid instruction type\n";
-            return SALAM::createBadInst(id, OpCode, 0); break;
+            return SALAM::createBadInst(id, OpCode, 1); break;
         }
     }
 }

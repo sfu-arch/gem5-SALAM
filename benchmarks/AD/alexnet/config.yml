@@ -1,0 +1,27 @@
+---
+acc_cluster:
+  - Name: alexnet_clstr
+  - DMA:
+    - Name: dma
+      MaxReqSize: 64
+      BufferSize: 128
+      PIOMaster: LocalBus
+      Type: NonCoherent
+      InterruptNum: 95
+  - Accelerator:
+    - Name: Top
+      IrPath: benchmarks/AD/alexnet/hw/top.ll
+      ConfigPath: benchmarks/AD/alexnet/hw/top.ini
+      PIOSize: 25
+      InterruptNum: 68
+      PIOMaster: LocalBus
+      # Local to PIO
+      LocalSlaves: LocalBus
+      Debug: False
+  - Accelerator:
+    - Name: alexnet
+      IrPath: benchmarks/AD/alexnet/hw/alexnet.ll
+      ConfigPath: benchmarks/AD/alexnet/hw/alexnet.ini
+      Debug: False
+      PIOSize: 1
+      PIOMaster: LocalBus

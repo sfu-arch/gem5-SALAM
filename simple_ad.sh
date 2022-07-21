@@ -8,7 +8,6 @@ VALGRIND="false"
 CACHE_SIZES=(512 1024 2048 4096)
 BIN_SCALES=(16 16 8 4 2)
 BIN_CONFIG_PATH="/localhome/mha157/gem5-SALAM/src/hwacc/bin_config.txt"
-PY_FILE_PATH="/localhome/mha157/gem5-SALAM/configs/SALAM/generated/gravity.py"
 # PY_FILE_PATH="/localhome/mha157/gem5-SALAM/1.txt"
 
 while getopts ":b:f:vdp" opt; do
@@ -64,13 +63,13 @@ elif [ "${VALGRIND}" == "true" ]; then
 	--log-file=${OUTDIR}/valgrind.log \
 	${M5_PATH}/build/ARM/gem5.debug"
 else
-	BINARY="${M5_PATH}/build/ARM/gem5.debug"
+	BINARY="${M5_PATH}/build/ARM/gem5.opt"
 fi
 
 KERNEL=$M5_PATH/benchmarks/AD/$BENCH/sw/main.elf
 
 SYS_OPTS="--mem-size=4GB \
-		  --mem-type=DDR4_2400_8x8 \
+		  --mem-type=SimpleMemory \
           --kernel=$KERNEL \
           --disk-image=$M5_PATH/baremetal/common/fake.iso \
           --machine-type=VExpress_GEM5_V1 \

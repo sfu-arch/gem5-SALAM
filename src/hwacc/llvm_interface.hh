@@ -147,10 +147,17 @@ class LLVMInterface : public ComputeUnit {
                           dbg = owner->debug();
                        }
         // ADDED BY ME
+        
+        void handlePushPopDependency(std::shared_ptr<SALAM::Instruction> inst);
+        void handleReadWriteDependency(std::shared_ptr<SALAM::Instruction> inst);
+
         void handlePop(SALAM::Instruction *inst);
         void handleMallocCall(int size);
         bool isMalloc(SALAM::Value* val) {
           return val->getIRStub().find("malloc") != std::string::npos;
+        }
+        bool isRealloc(SALAM::Value* val) {
+          return val->getIRStub().find("realloc") != std::string::npos;
         }
         void readCommit(MemoryRequest *req);
         void writeCommit(MemoryRequest *req);

@@ -1,0 +1,5 @@
+benchmark,cache_size,fw_cluster_cache_hits,fw_cluster_cache_misses,fw_cluster_total,rev_cluster_cache_hits,rev_cluster_cache_misses,rev_cluster_total,fw_dram_access,rev_dram_access,total_dram_access,fw_cycles,rev_cycles,total_cycles,fw_bw(MB),rev_bw(MB),total_bw(MB),bin_zero_read_count,bin_zero_bw(MB)
+alexnet_ad_pure,65536,173284,1191,174475,0,0,0,1191,5418,6609,448263,517861,966124,17.0,67.0,43.8,54770,5.7
+alexnet_ad_total,65536,173284,1191,174475,281030,621,281651,1191,6039,7230,448263,517861,966124,17.0,74.6,47.9,54770,5.7
+alexnet_orig_pure,65536,210360,8059,218419,330813,5608,336421,8059,4987,13046,526029,600269,1126298,98.1,53.2,74.1,0,0.0
+alexnet_orig_total,65536,210360,8059,218419,330813,5608,336421,8059,5608,13667,526029,600269,1126298,98.1,59.8,77.7,0,0.0

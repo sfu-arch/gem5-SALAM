@@ -37,7 +37,7 @@ void run(double *src, double *wall, double *dst)
             temp = src;
             src = dst;
             dst = temp;
-            //#pragma omp parallel for private(min)
+            #pragma clang loop unroll_count(16)
             for(int n = 1; n < COLS; n++){
               min = src[t * COLS + n];
               if (n > 0)

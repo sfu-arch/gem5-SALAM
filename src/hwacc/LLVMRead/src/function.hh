@@ -27,7 +27,7 @@ namespace SALAM {
 		void addInstance() { activeInstances++; }
 		void removeInstance() { if (activeInstances>0) activeInstances--; }
 		bool canLaunch() { return activeInstances < instanceLimit; }
-                llvm::Type *return_type;
+		llvm::Type *return_type;
         };
 }
 

@@ -1,0 +1,27 @@
+---
+acc_cluster:
+  - Name: spmv_clstr
+  - DMA:
+    - Name: dma
+      MaxReqSize: 64
+      BufferSize: 128
+      PIOMaster: LocalBus
+      Type: NonCoherent
+      InterruptNum: 95
+  - Accelerator:
+    - Name: Top
+      IrPath: benchmarks/sys_validation/spmv/hw/top.ll
+      ConfigPath: benchmarks/sys_validation/spmv/hw/top.ini
+      PIOSize: 25
+      InterruptNum: 68
+      PIOMaster: LocalBus
+      # Local to PIO
+      LocalSlaves: LocalBus
+      Debug: False
+  - Accelerator:
+    - Name: spmv
+      IrPath: benchmarks/sys_validation/spmv/hw/spmv.ll
+      ConfigPath: benchmarks/sys_validation/spmv/hw/spmv.ini
+      Debug: False
+      PIOSize: 1
+      PIOMaster: LocalBus

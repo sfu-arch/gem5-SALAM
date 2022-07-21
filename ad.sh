@@ -5,7 +5,8 @@ BENCH=""
 DEBUG="false"
 PRINT_TO_FILE="true"
 VALGRIND="false"
-CACHE_SIZES=(512 1024 2048 4096 8192 16384 32768 65536)
+# CACHE_SIZES=(512 1024 2048 4096 8192 16384 32768 65536 131072)
+CACHE_SIZES=(65536)
 BIN_SCALES=(16 16 8 4 2)
 MODES=("ad" "orig")
 BIN_CONFIG_PATH="/localhome/mha157/gem5-SALAM/src/hwacc/bin_config.txt"
@@ -95,26 +96,34 @@ RUN_SCRIPT="$BINARY $DEBUG_FLAGS --outdir=$OUTDIR \
 
 PY_FILE_PATH="/localhome/mha157/gem5-SALAM/configs/SALAM/generated/$BENCH.py"
 
-for t in ${CACHE_SIZES[@]}; do
-	sed -i '27d' $PY_FILE_PATH
-	sed -i '27i\	clstr._connect_caches(system, options, l2coherent=False, cache_size="'${t}'B")' $PY_FILE_PATH
-	sed -i '1d' $BIN_CONFIG_PATH
-	LINE="0,"
-	for u in ${BIN_SCALES[@]}; do
-		DIV=$((t/u))
-		LINE="${LINE}${DIV},"
+for mode in ${MODES[@]}; do
+	for t in ${CACHE_SIZES[@]}; do
+		sed -i '27d' $PY_FILE_PATH
+		sed -i '27i\	clstr._connect_caches(system, options, l2coherent=False, cache_size="'${t}'B")' $PY_FILE_PATH
+		sed -i '1d' $BIN_CONFIG_PATH
+		if [ $mode == "ad" ]; then
+			LINE="1,512,"
+		else
+			LINE="0,"
+		fi
+		# for u in ${BIN_SCALES[@]}; do
+		# 	DIV=$((t/u))
+		# 	LINE="${LINE}${DIV},"
+		# done
+		echo $LINE >> $BIN_CONFIG_PATH
+		if [ "${PRINT_TO_FILE}" == "true" ]; then
+			mkdir -p $OUTDIR
+			$RUN_SCRIPT > ${OUTDIR}/debug-trace.txt > 2.txt 2> 1.txt
+		else
+			$RUN_SCRIPT  > 2.txt 2> 1.txt
+		fi
+		echo "Done with cache size: ${t}"
+		cp 2.txt $OUTDIR/SALAM_OUT_${mode}_${t}.txt
+		cp 1.txt $OUTDIR/log_${mode}_${t}.txt
+		python3 cache_stat_extractor.py ${BENCH}_${mode} $t  >> cache_result.csv
+		rm $OUTDIR/SALAM_OUT_${mode}_${t}.txt
+		rm $OUTDIR/log_${mode}_${t}.txt
 	done
-	echo $LINE >> $BIN_CONFIG_PATH
-	if [ "${PRINT_TO_FILE}" == "true" ]; then
-		mkdir -p $OUTDIR
-		$RUN_SCRIPT > ${OUTDIR}/debug-trace.txt > 2.txt 2> 1.txt
-	else
-		$RUN_SCRIPT  > 2.txt 2> 1.txt
-	fi
-	echo "Done with cache size: ${t}"
-	cp 2.txt $OUTDIR/SALAM_OUT_orig_${t}.txt
-	cp 1.txt $OUTDIR/log_orig_${t}.txt
-	python3 cache_stat_extractor.py ${BENCH}_orig $t  >> cache_result.csv
 done
 # Debug Flags List
 #
