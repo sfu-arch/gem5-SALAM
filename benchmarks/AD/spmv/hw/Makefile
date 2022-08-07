@@ -9,7 +9,7 @@
 MAIN_FILE=spmv
 KERN=$(MAIN_FILE).c top.c
 build: $(FILES)
-	clang++ -O1 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -fno-builtin -emit-llvm $(KERN) -target x86_64
-	opt $(MAIN_FILE).ll -load=../../LLVMEnzyme-12.so -enzyme -o $(MAIN_FILE).ll -S -loop-unroll -mem2reg -always-inline -enable-bins -bin-size=100
+	clang++ -O3 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -fno-builtin -emit-llvm $(KERN) -target x86_64
+	opt $(MAIN_FILE).ll -load=../../LLVMEnzyme-12.so -enzyme -o $(MAIN_FILE).ll -S -loop-unroll -mem2reg -always-inline -enable-bins -bin-size=1000
 clean:
 	rm -f *.ll

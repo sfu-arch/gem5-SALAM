@@ -110,7 +110,6 @@ for line in dump_file:
         handle_mem_access(line, current_mode)
     if 'Launching read' in line:
         read_count += 1
-
 salam_stat_file = open(salam_stat_dir, 'r', encoding="ISO-8859-1")
 runtime = 0
 ad_pure_dram_reads = 0

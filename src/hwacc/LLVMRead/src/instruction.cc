@@ -164,9 +164,9 @@ SALAM::Instruction::signalUsers()
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++signalUsers()\n");
     uint64_t count = 0;
     for (auto user : dynamicUsers) {
-        if (is_read || is_write) {
-            std::cerr << "User : " << user->getIRString() << "\n";
-        }
+        // if (is_read || is_write) {
+        //     std::cerr << "User : " << user->getIRString() << "\n";
+        // }
         DPRINTF(Runtime, "|| User[%i] =============\n", count);
         if(DTRACE(SALAM_Debug)) {
             user->dump();
@@ -219,8 +219,8 @@ SALAM::Instruction::launch()
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++launch()\n");
     // std::cerr << "||==launch================= " << getIRStub() << "\n";;
     DPRINTF(Runtime, "||== FUS: %d\n", getFunctionalUnit() );
-    std::cerr << "FUNCTIONAL UNIT : " << functional_unit << "\n";
-    std::cerr << "hasFunctionalUnit : " << hasFunctionalUnit() << "\n";
+    // std::cerr << "FUNCTIONAL UNIT : " << functional_unit << "\n";
+    // std::cerr << "hasFunctionalUnit : " << hasFunctionalUnit() << "\n";
     
     if (hasFunctionalUnit()) {
         if(!hw_interface->availableFunctionalUnit(getFunctionalUnit())) return false;
@@ -258,7 +258,7 @@ SALAM::Instruction::commit()
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++commit()\n");
     DPRINTF(Runtime, "||  Current Cycle: %i\n", getCurrentCycle());
     if (isLoad()) {
-        std::cerr << "Commiting " << getIRString() << " -> " << getUID() << "\n";
+        // std::cerr << "Commiting " << getIRString() << " -> " << getUID() << "\n";
         if (is_read)
             std::cerr << "is_read " << "\n";
     }
@@ -2333,7 +2333,7 @@ Load::createMemoryRequest() {
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++createMemoryRequest()\n");
     Addr memAddr = (operands.front().getPtrRegValue());
-    std::cerr << "|| Creating load memory request for " << ir_string << " at " << memAddr << std::endl;
+    // std::cerr << "|| Creating load memory request for " << ir_string << " at " << memAddr << std::endl;
     size_t reqLen = getSizeInBytes();
     DPRINTF(RuntimeCompute, "|| Launching %s\n", ir_string);
     DPRINTF(RuntimeCompute, "|| Addr[%x] Size[%i]\n", memAddr, reqLen);
@@ -2398,7 +2398,7 @@ Store::compute() {
 MemoryRequest *
 Store::createMemoryRequest() {
     Addr memAddr = (operands.at(1).getPtrRegValue());
-    std::cerr << "|| Creating store memory request for " << ir_stub << ": " << getUID() << ": " << ir_string << " at " << memAddr << std::endl;
+    // std::cerr << "|| Creating store memory request for " << ir_stub << ": " << getUID() << ": " << ir_string << " at " << memAddr << std::endl;
 
     size_t reqLen = operands.at(0).getSizeInBytes();
 
@@ -2550,7 +2550,7 @@ GetElementPtr::compute() {
     uint64_t result = ptr + offset;
     DPRINTF(RuntimeCompute, "|| Ptr[%x]  Offset[%x] (Flat Idx[%d])\n", ptr, offset, offset/resultElementSizeInBytes);
     DPRINTF(RuntimeCompute, "|| Result: Addr[%x]\n", result);
-    std::cerr << "Stting result to " << result << std::endl;
+    // std::cerr << "Stting result to " << result << std::endl;
     setRegisterValue(result);
 }
 
@@ -3430,7 +3430,7 @@ BitCast::initialize(llvm::Value * irval,
 
 void
 BitCast::compute() {
-    std::cerr << "BitCast::compute() " <<  operands.front().getPtrRegValue() << std::endl;
+    // std::cerr << "BitCast::compute() " <<  operands.front().getPtrRegValue() << std::endl;
 #if USE_LLVM_AP_VALUES
     auto opdata = operands.front().getPtrRegValue();
     setRegisterValue(opdata);

@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "cache_stat_extractor.py", line 127, in <module>
+    forward_runtime = forward_cycle_count/total_cycle_count * runtime
+ZeroDivisionError: division by zero
+Traceback (most recent call last):
+  File "cache_stat_extractor.py", line 127, in <module>
+    forward_runtime = forward_cycle_count/total_cycle_count * runtime
+ZeroDivisionError: division by zero

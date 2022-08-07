@@ -189,13 +189,13 @@ void
 SALAM::Value::setRegisterValue(const uint64_t data) {
 
     if (returnReg->isPtr()) {
-        std::cerr << getUID() << " : " << getIRString() << ": setting pointer register value " << std::hex << data  << std::endl;
+        // std::cerr << getUID() << " : " << getIRString() << ": setting pointer register value " << std::hex << data  << std::endl;
         returnReg->writePtrData(data, ptr_size);
-        std::cerr << "After write 1: " <<  std::dec << std::endl;
+        // std::cerr << "After write 1: " <<  std::dec << std::endl;
 
         DPRINTF(Runtime, "| Ptr Register\n");
         returnReg->writePtrData(data);
-        std::cerr << "After write 2: " <<  std::dec << std::endl;
+        // std::cerr << "After write 2: " <<  std::dec << std::endl;
 
     } else {
     #if USE_LLVM_AP_VALUES

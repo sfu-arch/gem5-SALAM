@@ -1,5 +1,6 @@
 #!/bin/bash
-BENCH_NAMES=("nn" "alexnet" "gravity" "logsum" "matd" "pathfinder" "sddmm" "somier")
+# BENCH_NAMES=("nn" "alexnet" "gravity" "logsum" "matd" "pathfinder" "sddmm" "somier")
+BENCH_NAMES=("alexnet" )
 
 CURR_DIR=$(pwd)
 MAKE_DIR="/localhome/mha157/gem5-SALAM/benchmarks/AD/"
