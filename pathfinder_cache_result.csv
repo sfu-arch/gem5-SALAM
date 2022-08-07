@@ -1,5 +1,0 @@
-benchmark,cache_size,fw_cluster_cache_hits,fw_cluster_cache_misses,fw_cluster_total,rev_cluster_cache_hits,rev_cluster_cache_misses,rev_cluster_total,fw_dram_access,rev_dram_access,total_dram_access,fw_cycles,rev_cycles,total_cycles,fw_bw(MB),rev_bw(MB),total_bw(MB),bin_zero_read_count,bin_zero_bw(MB)
-pathfinder_ad_pure,65536,45355,3452,48807,0,0,0,3452,3624,7076,102193,329621,431814,216.2,70.4,104.9,40392,9.4
-pathfinder_ad_total,65536,45355,3452,48807,162633,6558,169191,3452,10182,13634,102193,329621,431814,216.2,197.7,202.1,40392,9.4
-pathfinder_orig_pure,65536,78879,9132,88011,201954,7629,209583,9132,1071,10203,153771,395503,549274,380.1,17.3,118.9,0,0.0
-pathfinder_orig_total,65536,78879,9132,88011,201954,7629,209583,9132,7629,16761,153771,395503,549274,380.1,123.5,195.3,0,0.0

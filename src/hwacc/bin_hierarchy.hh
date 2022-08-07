@@ -114,10 +114,20 @@ class BinHierarchy {
         capacity-= bundle->size;
       
       }
+      
+      void push(int size) {
+        if (capacity < size) {
+          handleSpill(size);       
+        } else {
+          std::cerr << id << " : Didn't spill" << std::endl;;
+        }
+        capacity-= size;
+      
+      }
 
       Bundle* pop() {
         Bundle* to_return;
-
+        return nullptr;
         if (current_bundles.size() == 0) {
           if (next_bin)
             return next_bin->pop();
@@ -168,13 +178,17 @@ class BinHierarchy {
   };
   
   void push(uint32_t count) {
-    Bundle *bundle = new Bundle(last_bundle_id++, count);
-    bundle_map[bundle->id] = bundle;
-    bins[0]->push(bundle);
-    std::cerr << "Push Done " << std::endl;
+    // Bundle *bundle = new Bundle(last_bundle_id++, count);
+    // bundle_map[bundle->id] = bundle;
+    // bins[0]->push(bundle);
+    // std::cerr << "Push Done " << std::endl;
+    spillToMemory(count);
   }
-
+  void pop(int size) {
+    fetched_count += size;
+  }
   void pop() {
+    return;
     if (!bundle_map.size())
       return;
 
@@ -190,7 +204,15 @@ class BinHierarchy {
     last_bin->push(bundle);
     std::cerr << "Total wrote " << std::dec << spilled_count << std::endl;
   }
-  
+
+  void spillToMemory(int size) {
+    // spill to memory
+    current_address += data_size * size;
+    in_mem_count += size;
+    spilled_count += size;
+    std::cerr << "Total wrote " << std::dec << spilled_count << std::endl;
+  }
+
   Bundle* fetchFromMemory() {
     // fetch from memory
     

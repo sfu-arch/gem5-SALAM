@@ -7,9 +7,7 @@
 #include <math.h>
 #include <inttypes.h>
 #include <string.h>
-
-#define DIM 16
-#define N 40
+// #include "../autogen.h"
 
 extern "C" {
     void top();
@@ -19,44 +17,64 @@ extern int enzyme_const;
 template<typename Return, typename... T>
 Return __enzyme_autodiff(T...);
 
-typedef enum { taco_mode_dense, taco_mode_sparse } taco_mode_t;
-typedef struct {
-  int32_t      order;         // tensor order (number of modes)
-  int32_t     *dimensions;    // tensor dimensions
-  int32_t      csize;         // component size
-  int32_t*     mode_ordering; // mode storage ordering
-  taco_mode_t* mode_types;    // mode storage types
-  uint8_t***   indices;       // tensor index data (per mode)
-  double    vals[DIM*DIM*DIM];          // tensor values
-  uint8_t*     fill_value;    // tensor fill value
-  int32_t      vals_size;     // values array size
-} taco_tensor_t;
+#define DIMS N
+void compute(taco_tensor_t *y, taco_tensor_t *a, taco_tensor_t *x, taco_tensor_t *z) {
+  double* y_vals = (double*)(y->vals);
+  uint64_t* a2_pos = (uint64_t*)(a->indptrs);
+  double* a_vals = (double*)(a->vals);
+  double* x_vals = (double*)(x->vals);
+  double* z_vals = (double*)(z->vals);
 
-void compute(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t *C, taco_tensor_t *D) {
-  for (int32_t i = 0; i < DIM; i++) {
-    for (int32_t k = 0; k < DIM; k++) {
-      int32_t kC = i * DIM + k;
-      #pragma clang loop unroll(full)
-      for (int32_t j = 0; j < DIM; j++) {
-        int32_t jA = i * DIM + j;
-        int32_t jB = i * DIM + j;
-        int32_t jD = k * DIM + j;
-        A->vals[jA] = A->vals[jA] + (B->vals[jB] * C->vals[kC]) * D->vals[jD];
-      }
+  uint64_t *x_ptrs = (uint64_t*)(x->indptrs);
+  uint64_t *y_ptrs = (uint64_t*)(y->indptrs);
+  uint64_t *z_ptrs = (uint64_t*)(z->indptrs);
+  int32_t iy = 0;
+  for (int32_t i = 0; i < N; i++) {
+
+    for (int64_t ja = a2_pos[i]; ja < a2_pos[(i+1)]; ja++) {
+      // for (int32_t k = 0; k < DIMS; k++) {
+        int64_t kC = i * N + x->indices[ja];
+        int64_t jD = i * N + a->indices[ja];
+        y_vals[iy] += ((-1 * a_vals[ja]) * (-1*x_vals[kC])) * (-1*z_vals[jD]);
+        iy++;
+      // }
     }
   }
 }
+
 void top() {
+    // incode
+  taco_tensor_t* A = (taco_tensor_t*)((uint64_t) 0x80c00000);
+  taco_tensor_t* Y = (taco_tensor_t*)((uint64_t) A + sizeof(taco_tensor_t));
+  taco_tensor_t* X = (taco_tensor_t*)((uint64_t) Y + sizeof(taco_tensor_t));
+  taco_tensor_t* Z = (taco_tensor_t*)((uint64_t) X + sizeof(taco_tensor_t));
+  // ptr_assigner(A->ptrs);
+  // ptr_assigner(Y->ptrs);
+  // ptr_assigner(X->ptrs);
+  // ptr_assigner(Z->ptrs);
+  // outcode
+  uint64_t* a2_pos = (uint64_t*)(A->indptrs);
 
-    taco_tensor_t* A = (taco_tensor_t*)0x80c00000;
-    taco_tensor_t* B = (taco_tensor_t*)((uint64_t) A + sizeof(taco_tensor_t));
-    taco_tensor_t* D = (taco_tensor_t*)((uint64_t) B + sizeof(taco_tensor_t));
-    taco_tensor_t* C = (taco_tensor_t*)((uint64_t) D + sizeof(taco_tensor_t));
+  for (int i = 0; i < N; i++) {
+    for (int64_t ja = a2_pos[i]; ja < a2_pos[(i+1)]; ja++) {
+      A->indices[ja] = (((i * ja) ^ N)  * 161241) % DATA_SIZE;
+      Z->indices[ja] = (((i * ja * 13) ^ N)  * 1331) % DATA_SIZE;
+      X->indices[ja] = (((i * ja * 17) ^ N)  * 1242141) % DATA_SIZE;
+    }
+  }
+  taco_tensor_t* A_grad = (taco_tensor_t*)((uint64_t) Z + sizeof(taco_tensor_t));
+  taco_tensor_t* Y_grad = (taco_tensor_t*)((uint64_t) A_grad + sizeof(taco_tensor_t));
+  taco_tensor_t* X_grad = (taco_tensor_t*)((uint64_t) Y_grad + sizeof(taco_tensor_t));
+  taco_tensor_t* Z_grad = (taco_tensor_t*)((uint64_t) X_grad + sizeof(taco_tensor_t));
 
-    taco_tensor_t* A_grad = (taco_tensor_t*)((uint64_t) C + sizeof(taco_tensor_t));
-    taco_tensor_t* B_grad = (taco_tensor_t*)((uint64_t) A_grad + sizeof(taco_tensor_t));
-    taco_tensor_t* D_grad = (taco_tensor_t*)((uint64_t) B_grad + sizeof(taco_tensor_t));
-    taco_tensor_t* C_grad = (taco_tensor_t*)((uint64_t) D_grad + sizeof(taco_tensor_t));
+  // // taco_tensor_t* Y = (taco_tensor_t*)malloc(sizeof(taco_tensor_t));
+  // taco_tensor_t* X = (taco_tensor_t*)malloc(sizeof(taco_tensor_t));
+  // taco_tensor_t* Z = (taco_tensor_t*)malloc(sizeof(taco_tensor_t));
 
-    __enzyme_autodiff<double>(compute, B, B_grad, C, C_grad, D, D_grad, A, A_grad) ;
+  // taco_tensor_t* A_grad = (taco_tensor_t*)malloc(sizeof(taco_tensor_t));
+  // taco_tensor_t* Y_grad = (taco_tensor_t*)malloc(sizeof(taco_tensor_t));
+  // taco_tensor_t* X_grad = (taco_tensor_t*)malloc(sizeof(taco_tensor_t));
+  // taco_tensor_t* Z_grad = (taco_tensor_t*)malloc(sizeof(taco_tensor_t));
+  
+  __enzyme_autodiff<void>(compute, Y, Y_grad, A, A_grad, X, X_grad, Z, Z_grad) ;
 }
