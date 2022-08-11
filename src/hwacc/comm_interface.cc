@@ -115,6 +115,22 @@ CommInterface::SPMPort::sendPacket(PacketPtr pkt) {
     }
 }
 
+bool
+CommInterface::RegPort::recvTimingResp(PacketPtr pkt) {
+    owner->recvPacket(pkt);
+    return true;
+}
+
+void
+CommInterface::RegPort::recvReqRetry() {
+    panic("We should not be receiving retries from Register Banks.\n");
+}
+
+void
+CommInterface::RegPort::sendPacket(PacketPtr pkt) {
+    sendTimingReq(pkt);
+}
+
 void
 CommInterface::recvPacket(PacketPtr pkt) {
 	if (pkt->isRead()) {
@@ -126,7 +142,7 @@ CommInterface::recvPacket(PacketPtr pkt) {
         pkt->writeData(readReq->buffer + (pkt->req->getPaddr() - readReq->beginAddr));
         if (debug()) DPRINTF(CommInterface, "Read:%s\n", readReq->printBuffer());
         for (int i = pkt->req->getPaddr() - readReq->beginAddr;
-             i < pkt->req->getPaddr() - readReq->beginAddr + pkt->getSize(); i++)
+             i < pkt->req->getPaddr() - readReq->beginAddr + pkt->getSize(); i++)\
         {
             readReq->readsDone[i] = true;
         }
@@ -224,6 +240,19 @@ CommInterface::inSPMRange(Addr add) {
 }
 
 bool
+CommInterface::inRegRange(Addr add) {
+    for (auto port : regPorts) {
+        AddrRangeList adl = port->getAddrRanges();
+        for (auto address : adl) {
+            if (address.contains(add)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool
 CommInterface::inLocalRange(Addr add) {
     for (auto port : localPorts) {
         AddrRangeList adl = port->getAddrRanges();
@@ -263,6 +292,7 @@ CommInterface::getValidLocalPort(Addr add, bool read) {
     }
     return nullptr;
 }
+
 CommInterface::MemSidePort *
 CommInterface::getValidGlobalPort(Addr add, bool read) {
     for (auto port : globalPorts) {
@@ -277,6 +307,7 @@ CommInterface::getValidGlobalPort(Addr add, bool read) {
     }
     return nullptr;
 }
+
 CommInterface::MemSidePort *
 CommInterface::getValidStreamPort(Addr add, size_t len, bool read) {
     for (auto port : streamPorts) {
@@ -302,6 +333,19 @@ CommInterface::getValidSPMPort(Addr add, size_t len, bool read) {
                     if (port->canAccess(add, len, read))
                         return port;
                 }
+            }
+        }
+    }
+    return nullptr;
+}
+
+CommInterface::RegPort *
+CommInterface::getValidRegPort(Addr add) {
+    for (auto port : regPorts) {
+        AddrRangeList adl = port->getAddrRanges();
+        for (auto address : adl) {
+            if (address.contains(add)) {
+                return port;
             }
         }
     }
@@ -622,30 +666,119 @@ CommInterface::tryWrite(SPMPort * port) {
 }
 
 void
+CommInterface::tryRead(RegPort * port) {
+    MemoryRequest * readReq = port->readReq;
+    Request::Flags flags;
+    if (readReq->readLeft <= 0) {
+        if (debug()) DPRINTF(CommInterface, "Something went wrong. Shouldn't try to read if there aren't reads left\n");
+        return;
+    }
+    int size = readReq->readLeft;
+    RequestPtr req = make_shared<Request>(readReq->currentReadAddr, size, flags, masterId);
+    if (debug()) DPRINTF(CommInterface, "Trying to read addr: 0x%016x, %d bytes through port: %s\n",
+        req->getPaddr(), size, port->name());
+
+    PacketPtr pkt = new Packet(req, MemCmd::ReadReq);
+    pkt->allocate();
+    readReq->pkt = pkt;
+    readReq->currentReadAddr += size;
+    readReq->readLeft -= size;
+    if (readReq->readLeft <= 0) readReq->needToRead = false;
+    port->sendPacket(pkt);
+
+    if (!(readReq->readLeft > 0)) {
+        if (!tickEvent.scheduled()) {
+            schedule(tickEvent, curTick() + processDelay);
+        }
+    }
+}
+
+void
+CommInterface::tryWrite(RegPort * port) {
+    MemoryRequest * writeReq = port->writeReq;
+    if (writeReq->writeLeft <= 0) {
+        if (debug()) DPRINTF(CommInterface, "Something went wrong. Shouldn't try to write if there aren't writes left\n");
+        return;
+    }
+
+    int size = writeReq->writeLeft;
+
+    Request::Flags flags;
+    uint8_t *data = new uint8_t[size];
+    std::memcpy(data, &(writeReq->buffer[writeReq->totalLength-writeReq->writeLeft]), size);
+    RequestPtr req = make_shared<Request>(writeReq->currentWriteAddr, size, flags, masterId);
+    req->setExtraData((uint64_t)data);
+
+
+    if (debug()) DPRINTF(CommInterface, "totalLength: %d, writeLeft: %d\n", writeReq->totalLength, writeReq->writeLeft);
+    if (debug()) DPRINTF(CommInterface, "Trying to write to addr: 0x%016x, %d bytes, data 0x%08x through port: %s\n",
+        writeReq->currentWriteAddr, size,
+        *((uint64_t*)(&(writeReq->buffer[writeReq->totalLength-writeReq->writeLeft]))),
+        port->name());
+
+    PacketPtr pkt = new Packet(req, MemCmd::WriteReq);
+    uint8_t *pkt_data = (uint8_t *)req->getExtraData();
+    pkt->dataDynamic(pkt_data);
+    writeReq->pkt = pkt;
+    writeReq->currentWriteAddr += size;
+    writeReq->writeLeft -= size;
+    if (writeReq->writeLeft <= 0) writeReq->needToWrite = false;
+    port->sendPacket(pkt);
+
+    if (!(writeReq->writeLeft > 0)) {
+        if (!tickEvent.scheduled()) {
+            schedule(tickEvent, curTick() + processDelay);
+        }
+    }
+}
+
+void
 CommInterface::enqueueRead(MemoryRequest * req) {
-    if (debug()) DPRINTF(CommInterface, "Read from 0x%lx of Size:%d Bytes Enqueued:\n", req->address, req->length);
-    readQueue.push_back(req);
-    if (debug()) DPRINTF(CommInterfaceQueues, "Current Queue:\n");
-    for (auto it=readQueue.begin(); it!=readQueue.end(); ++it) {
-        if (debug()) DPRINTF(CommInterfaceQueues, "Read Request: %lx\n", (*it)->address);
+    if (inRegRange(req->getAddress())) {
+        // We want to immediately handle register requests
+        // and bypass memory queues
+        auto regport = getValidRegPort(req->getAddress());
+        accRdQ.push_back(req); // Add it to active read queue
+        regport->setReadReq(req);
+        req->setCarrierPort(regport);
+        tryRead(regport);
+    } else {
+        if (debug()) DPRINTF(CommInterface, "Read from 0x%lx of Size:%d Bytes Enqueued:\n", req->address, req->length);
+        readQueue.push_back(req);
+        if (debug()) {
+            DPRINTF(CommInterfaceQueues, "Current Queue:\n");
+            for (auto it=readQueue.begin(); it!=readQueue.end(); ++it) {
+                DPRINTF(CommInterfaceQueues, "Read Request: %lx\n", (*it)->address);
+            }
+        }
     }
     if (!tickEvent.scheduled()) {
         schedule(tickEvent, curTick() + processDelay);
-        //schedule(tickEvent, nextCycle());
     }
 }
 
 void
 CommInterface::enqueueWrite(MemoryRequest * req) {
-    if (debug()) DPRINTF(CommInterface, "Write to 0x%lx of size:%d bytes enqueued\n", req->address, req->length);
-    writeQueue.push_back(req);
-    if (debug()) DPRINTF(CommInterfaceQueues, "Current Queue:\n");
-    for (auto it=writeQueue.begin(); it!=writeQueue.end(); ++it) {
-        if (debug()) DPRINTF(CommInterfaceQueues, "Write Request: %lx\n", (*it)->address);
+    if (inRegRange(req->getAddress())) {
+        // We want to immediately handle register requests
+        // and bypass memory queues
+        auto regport = getValidRegPort(req->getAddress());
+        accWrQ.push_back(req); // Add it to active write queue
+        regport->setWriteReq(req);
+        req->setCarrierPort(regport);
+        tryWrite(regport);
+    } else {
+        if (debug()) DPRINTF(CommInterface, "Write to 0x%lx of size:%d bytes enqueued\n", req->address, req->length);
+        writeQueue.push_back(req);
+        if (debug()) {
+            DPRINTF(CommInterfaceQueues, "Current Queue:\n");
+            for (auto it=writeQueue.begin(); it!=writeQueue.end(); ++it) {
+                DPRINTF(CommInterfaceQueues, "Write Request: %lx\n", (*it)->address);
+            }
+        }
     }
     if (!tickEvent.scheduled()) {
         schedule(tickEvent, curTick() + processDelay);
-        //schedule(tickEvent, nextCycle());
     }
 }
 
@@ -764,11 +897,6 @@ CommInterface::getGlobalVar(unsigned offset, unsigned size) {
     }
 }
 
-// CommInterface *
-// CommInterfaceParams::create() const {
-//     return new CommInterface(this);
-// }
-
 Port&
 CommInterface::getPort(const std::string& if_name, PortID idx) {
     if (if_name == "local") {
@@ -776,7 +904,6 @@ CommInterface::getPort(const std::string& if_name, PortID idx) {
             localPorts.resize((idx+1));
         }
         if (localPorts[idx] == nullptr) {
-            // const std::string portName = csprintf("%s.local[%d]", name(), idx);
             const std::string portName = name() + ".local[" + std::to_string(idx) + "]";
             localPorts[idx] = new MemSidePort(portName, this, idx);
         }
@@ -786,7 +913,6 @@ CommInterface::getPort(const std::string& if_name, PortID idx) {
             globalPorts.resize((idx+1));
         }
         if (globalPorts[idx] == nullptr) {
-            // const std::string portName = csprintf("%s.acp[%d]", name(), idx);
             const std::string portName = name() + ".acp[" + std::to_string(idx) + "]";
             globalPorts[idx] = new MemSidePort(portName, this, idx);
         }
@@ -796,7 +922,6 @@ CommInterface::getPort(const std::string& if_name, PortID idx) {
             streamPorts.resize((idx+1));
         }
         if (streamPorts[idx] == nullptr) {
-            // const std::string portName = csprintf("%s.stream[%d]", name(), idx);
             const std::string portName = name() + ".stream[" + std::to_string(idx) + "]";
             streamPorts[idx] = new MemSidePort(portName, this, idx);
         }
@@ -806,11 +931,19 @@ CommInterface::getPort(const std::string& if_name, PortID idx) {
             spmPorts.resize((idx+1));
         }
         if (spmPorts[idx] == nullptr) {
-            // const std::string portName = csprintf("%s.spm[%d]", name(), idx);
             const std::string portName = name() + ".spm[" + std::to_string(idx) + "]";
             spmPorts[idx] = new SPMPort(portName, this, idx);
         }
         return *spmPorts[idx];
+    } else if (if_name == "reg") {
+        if (idx >= regPorts.size()) {
+            regPorts.resize((idx+1));
+        }
+        if (regPorts[idx] == nullptr) {
+            const std::string portName = name() + ".reg[" + std::to_string(idx) + "]";
+            regPorts[idx] = new RegPort(portName, this, idx);
+        }
+        return *regPorts[idx];
     } else if (if_name == "pio") {
         return pioPort;
     } else {
@@ -857,15 +990,4 @@ CommInterface::clearMemRequest(MemoryRequest * req, bool isRead) {
 }
 
 void
-CommInterface::startup() {
-    // AddrRangeList dramSideRanges = dramPort->getAddrRanges();
-    // AddrRangeList spmSideRanges = spmPort->getAddrRanges();
-    // std::cout << "DRAM Port Ranges:\n";
-    // for (auto it = dramSideRanges.begin(); it != dramSideRanges.end(); ++it) {
-    //     std::cout << it->to_string() << std::endl;
-    // }
-    // std::cout << "SPM Port Ranges:\n";
-    // for (auto it = spmSideRanges.begin(); it != spmSideRanges.end(); ++it) {
-    //     std::cout << it->to_string() << std::endl;
-    // }
-}
+CommInterface::startup() {}

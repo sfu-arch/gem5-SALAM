@@ -1,6 +1,5 @@
 #!/bin/bash
-FLAGS=""
-
+FLAGS="SALAM_Debug"
 BENCH=""
 DEBUG="false"
 PRINT_TO_FILE="false"
@@ -86,6 +85,12 @@ RUN_SCRIPT="$BINARY $DEBUG_FLAGS --outdir=$OUTDIR \
 			--accbench=$BENCH $CACHE_OPTS"
 
 ${M5_PATH}/SALAM-Configurator/systembuilder.py --sysName $BENCH --benchDir "benchmarks/sys_validation/${BENCH}"
+
+
+
+#python3 ${M5_PATH}/HWProfileGenerator.py -b $BENCH
+
+#exit
 
 if [ "${PRINT_TO_FILE}" == "true" ]; then
 	mkdir -p $OUTDIR

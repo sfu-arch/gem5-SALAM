@@ -14,6 +14,11 @@
 #include <memory>
 #include <vector>
 
+namespace gem5
+{
+    class SimObject;
+}
+
 namespace SALAM
 {
 class Value;
@@ -40,6 +45,7 @@ class Value
         uint64_t uid = 0;
         uint64_t size = 0;
         unsigned ptr_size = 4;
+        gem5::SimObject * owner;
         std::string ir_string;
         std::string ir_stub;
         llvm::Type::TypeID valueTy;
@@ -76,7 +82,7 @@ class Value
         /** Class Constructor.
          * @param id 
          */
-        Value(uint64_t id);
+        Value(uint64_t id, gem5::SimObject * _owner, bool _dbg);
         Value& operator = (Value &copy_val);
         bool operator == (const Value &v) { return uid == v.uid; }
         ~Value();
@@ -95,6 +101,8 @@ class Value
         std::string getIRString() { return ir_string; }
         std::string getIRStub() { return ir_stub; }
         unsigned getPtrSize() {return ptr_size;}
+        gem5::SimObject * getOwner() { return owner; }
+        bool debug() { return dbg; }
 
         // Helper functions for setting the value of the return register directly from the value
         // Using these functions will increment the write counters on tracked registers
@@ -133,6 +141,7 @@ class Value
         virtual bool isFunction() { return false; }
         virtual bool isBasicBlock() { return false; }
         virtual bool isInstruction() { return false; }
+        virtual uint64_t getOpode() { return -1; }
 
         void value_dump() { if (dbg) value_dbg->dumper(this); }
         std::string registerDataString() { return returnReg->dataString(); }

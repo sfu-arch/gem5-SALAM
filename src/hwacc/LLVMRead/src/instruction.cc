@@ -2,6 +2,7 @@
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/IR/DataLayout.h"
 #include "../../bin_hierarchy.hh"
+#include "sim/sim_object.hh"
 
 #include <cmath>
 
@@ -13,67 +14,53 @@ namespace SALAM
 //---------------------------------------------------------------------------//
 
 
-SALAM::Instruction::Instruction(uint64_t id) :
-                         Value(id)
+SALAM::Instruction::Instruction(uint64_t id, gem5::SimObject * owner, bool dbg) :
+                         Value(id, owner, dbg)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbg = true;
-    //     this->inst_dbg = new Instruction_Debugger();
-    // }
     currentCycle = 0;
 }
 
-SALAM::Instruction::Instruction(uint64_t id,
+SALAM::Instruction::Instruction(uint64_t id, gem5::SimObject * owner, bool dbg,
                          uint64_t OpCode) :
-                         Value(id),
+                         Value(id, owner, dbg),
                          llvmOpCode(OpCode)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbg = true;
-    //     this->inst_dbg = new Instruction_Debugger();
-    // }
     currentCycle = 0;
 }
 
-SALAM::Instruction::Instruction(uint64_t id,
+SALAM::Instruction::Instruction(uint64_t id, gem5::SimObject * owner, bool dbg,
                          uint64_t OpCode,
                          uint64_t cycles) :
-                         Value(id),
+                         Value(id, owner, dbg),
                          llvmOpCode(OpCode),
                          cycleCount(cycles)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbg = true;
-    //     this->inst_dbg = new Instruction_Debugger();
-    // }
+    currentCycle = 0;
+}
+
+SALAM::Instruction::Instruction(uint64_t id, gem5::SimObject * owner, bool dbg,
+                         uint64_t OpCode,
+                         uint64_t cycles,
+                         uint64_t fu) :
+                         Value(id, owner, dbg),
+                         llvmOpCode(OpCode),
+                         cycleCount(cycles),
+                         functional_unit(fu)
+{
     currentCycle = 0;
 }
 
 SALAM::Instruction::~Instruction()
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace Deleted: %s \n", __PRETTY_FUNCTION__);
-    //// if (DTRACE(SALAM_Debug)) delete inst_dbg;
 }
 
 SALAM::Instruction::Instruction_Debugger::Instruction_Debugger()
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
 }
 
 void
 SALAM::Instruction::Instruction_Debugger::dumper(Instruction *inst)
 {
-    // if (DTRACE(SALAM_Debug)) {
-        // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    //     DPRINTF(SALAM_Debug, "%s \n\t\t %s%d \n",
-    //         "|-(Instruction Base) ",
-    //         " | UID: ", inst->getUID()
-    //     );
-    //     inst->value_dump();
-    // }
 }
 bool isMalloc(llvm::Value *val)
 {
@@ -89,10 +76,7 @@ SALAM::Instruction::initialize(llvm::Value *irval,
                          irvmap *irmap,
                          SALAM::valueListTy *valueList)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    DPRINTF(LLVMInterface, "Initialize Value - Instruction::initialize\n");
-    // llvm::errs() << "insitializing instruction: " << *irval << "\n";
-
+    if (dbg) DPRINTFS(LLVMParse, owner, "Initialize Value - Instruction::initialize\n");
     SALAM::Value::initialize(irval, irmap);
     // Fetch the operands of the instruction
     llvm::User * iruser = llvm::dyn_cast<llvm::User>(irval);
@@ -130,21 +114,21 @@ SALAM::Instruction::initialize(llvm::Value *irval,
             }
 
             // TODO: Handle constant data and constant expressions
-            DPRINTF(LLVMInterface, "Instantiate Operand as Constant Data/Expression\n");
+            if (dbg) DPRINTFS(LLVMParse, owner, "Instantiate Operand as Constant Data/Expression\n");
             uint64_t id = valueList->back()->getUID() + 1;
-            std::shared_ptr<SALAM::Constant> con = std::make_shared<SALAM::Constant>(id);
+            std::shared_ptr<SALAM::Constant> con = std::make_shared<SALAM::Constant>(id, owner, dbg);
             valueList->push_back(con);
             irmap->insert(SALAM::irvmaptype(op, con));
             con->initialize(op1, irmap, valueList);
             opval = con;
         } else {
-            DPRINTF(LLVMInterface, "Instantiate Operands on Value List\n");
+            if (dbg) DPRINTFS(LLVMParse, owner, "Instantiate Operands on Value List\n");
             opval = mapit->second;
         }
-        DPRINTF(LLVMInterface, "Link Operand to Static Operands List\n");
+        if (dbg) DPRINTFS(LLVMParse, owner, "Link Operand to Static Operands List\n");
         staticDependencies.push_back(opval);
         if(llvm::isa<llvm::PHINode>(inst)) {
-            DPRINTF(LLVMInterface, "Phi Node Initiated\n");
+            if (dbg) DPRINTFS(LLVMParse, owner, "Phi Node Initiated\n");
             llvm::PHINode * phi = llvm::dyn_cast<llvm::PHINode>(inst);
             llvm::Value * bb = llvm::dyn_cast<llvm::Value>(phi->getIncomingBlock(phiBB));
             mapit = irmap->find(bb);
@@ -152,7 +136,7 @@ SALAM::Instruction::initialize(llvm::Value *irval,
             staticDependencies.push_back(opval);
             ++phiBB;
         } else if(llvm::isa<llvm::CmpInst>(inst)) {
-            DPRINTF(LLVMInterface, "Compare Instruction Initiated\n");
+            if (dbg) DPRINTFS(LLVMParse, owner, "Compare Instruction Initiated\n");
         }
     }
 }
@@ -160,23 +144,13 @@ SALAM::Instruction::initialize(llvm::Value *irval,
 void
 SALAM::Instruction::signalUsers()
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++signalUsers()\n");
     uint64_t count = 0;
     for (auto user : dynamicUsers) {
-        // if (is_read || is_write) {
-        //     std::cerr << "User : " << user->getIRString() << "\n";
-        // }
-        DPRINTF(Runtime, "|| User[%i] =============\n", count);
-        if(DTRACE(SALAM_Debug)) {
-            user->dump();
-            user->value_dump();
-        }
-
+        if (dbg) DPRINTFS(Runtime, owner, "|| User[%i] =============\n", count);
         user->setOperandValue(uid);
         count++;
     }
-    DPRINTF(Runtime, "||==signalUsers==========\n");
+    if (dbg) DPRINTFS(Runtime, owner, "||==signalUsers==========\n");
 }
 
 void
@@ -190,40 +164,30 @@ SALAM::Instruction::removeDynamicDependency(uint64_t opuid)
 bool
 SALAM::Instruction::ready()
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++ready()\n");
-    DPRINTF(Runtime, "|| Remaining Dependencies: %i \n", getDependencyCount());
+    if (dbg) DPRINTFS(Runtime, owner, "|| Remaining Dependencies: %i \n", getDependencyCount());
     if (getDependencyCount() == 0) {
         isready = true;
-        DPRINTF(Runtime, "||==Return: %s\n", isready ? "true" : "false");
-        DPRINTF(Runtime, "||==ready=================\n");
+        if (dbg) DPRINTFS(Runtime, owner, "||==Return: %s\n", isready ? "true" : "false");
+        if (dbg) DPRINTFS(Runtime, owner, "||==ready=================\n");
         return true;
     } else {
-        // if(DTRACE(SALAM_Debug)) {
-        //     uint64_t count = 0;
-        //     for (auto deps : getDynamicDependencies()) {
-        //         DPRINTF(Runtime, "|| -Dep[%i] = UID[%i]\n", count, getDynamicDependencies(count)->getUID());
-        //         count++;
-        //     }
-        // }
+
     }
-    DPRINTF(Runtime, "||==Return: %s\n", isready ? "true" : "false");
-    DPRINTF(Runtime, "||==ready=================\n");
+    if (dbg) DPRINTFS(Runtime, owner, "||==Return: %s\n", isready ? "true" : "false");
+    if (dbg) DPRINTFS(Runtime, owner, "||==ready=================\n");
     return false;
 }
 
 bool
 SALAM::Instruction::launch()
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++launch()\n");
-    // std::cerr << "||==launch================= " << getIRStub() << "\n";;
-    DPRINTF(Runtime, "||== FUS: %d\n", getFunctionalUnit() );
-    // std::cerr << "FUNCTIONAL UNIT : " << functional_unit << "\n";
-    // std::cerr << "hasFunctionalUnit : " << hasFunctionalUnit() << "\n";
-    
     if (hasFunctionalUnit()) {
-        if(!hw_interface->availableFunctionalUnit(getFunctionalUnit())) return false;
+        if(!hw_interface->availableFunctionalUnit(getFunctionalUnit())) {
+            return false;
+            std::cout << "Waiting on next available FU\n"; 
+        } else {
+            
+        }
     }
     launched = true;
     if (getCycleCount() == 0) { // Instruction ready to be committed
@@ -243,11 +207,8 @@ SALAM::Instruction::launch()
 
         // compute();
     }
-    
-
-    DPRINTF(Runtime, "||==Return: %s\n", isCommitted() ? "true" : "false");
-    DPRINTF(Runtime, "||==launch================\n");
-
+    if (dbg) DPRINTFS(Runtime, owner, "||==Return: %s\n", isCommitted() ? "true" : "false");
+    if (dbg) DPRINTFS(Runtime, owner, "||==launch================\n");
     return isCommitted();
 }
 
@@ -257,39 +218,42 @@ SALAM::Instruction::commit()
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++commit()\n");
     DPRINTF(Runtime, "||  Current Cycle: %i\n", getCurrentCycle());
-    if (isLoad()) {
+    if (isLoad() && is_read) {
         // std::cerr << "Commiting " << getIRString() << " -> " << getUID() << "\n";
-        if (is_read)
-            std::cerr << "is_read " << "\n";
+        std::cerr << "is_read " << "\n";
     }
-    if (getCurrentCycle() == getCycleCount() || is_read) { // Instruction ready to be committed
+    if (dbg) DPRINTFS(Runtime, owner, "||  Current Cycle: %i\n", getCurrentCycle());
+    if (getCurrentCycle() == getCycleCount()) { // Instruction ready to be committed
         signalUsers();
         committed = true;
-        DPRINTF(Runtime, "||==Return: %s\n", committed ? "true" : "false");
-        DPRINTF(Runtime, "||==commit================\n");
+        if (dbg) DPRINTFS(Runtime, owner, "||==Return: %s\n", committed ? "true" : "false");
+        if (dbg) DPRINTFS(Runtime, owner, "||==commit================\n");
+        //std::cout << "\n\n\nTest 3 - FU[" << getFunctionalUnit() << "]\n\n\n";
+        if (hasFunctionalUnit()) {
+            //std::cout << "\n\n\nTest 2\n\n\n";
+            hw_interface->clearFunctionalUnit(getFunctionalUnit());
+           // hw_interface->functional_units->
+        } else {
+            // 
+        }
         return true;
     } else {
-
-        DPRINTF(Runtime, "||  Remaining Cycles: %i\n", getCycleCount() - getCurrentCycle());
+        if (dbg) DPRINTFS(Runtime, owner, "||  Remaining Cycles: %i\n", getCycleCount() - getCurrentCycle());
         currentCycle++;
     }
-    DPRINTF(Runtime, "||==Return: %s\n", committed ? "true" : "false");
-    DPRINTF(Runtime, "||==commit================\n");
-
-    // std::cerr << "Not Commiting " << getIRString() << "\n";
+    if (dbg) DPRINTFS(Runtime, owner, "||==Return: %s\n", committed ? "true" : "false");
+    if (dbg) DPRINTFS(Runtime, owner, "||==commit================\n");
     return false;
 }
 
 void
 SALAM::Instruction::setOperandValue(uint64_t opuid)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||--setOperandValue()\n");
     uint64_t count = 0;
     for (auto it = operands.begin(); it != operands.end(); ++it) {
         auto op = *it;
         if (op.getUID() == opuid) {
-            DPRINTF(Runtime, "|| Storing Value in Op[%i]\n", count++);
+            if (dbg) DPRINTFS(Runtime, owner, "|| Storing Value in Op[%i]\n", count++);
             op.updateOperandRegister();
             //break;
         } else count++;
@@ -299,19 +263,16 @@ SALAM::Instruction::setOperandValue(uint64_t opuid)
 
 void
 SALAM::Instruction::reset() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||--reset()\n");
     isready = false;
     launched = false;
     committed = false;
     currentCycle = 0;
-    DPRINTF(Runtime, "||==reset=================\n");
+    if (dbg) DPRINTFS(Runtime, owner, "||==reset=================\n");
 }
 
 void
 SALAM::Instruction::linkOperands(const SALAM::Operand &newOp)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Operand op_copy = newOp;
     operands.push_back(op_copy);
 }
@@ -352,23 +313,20 @@ SALAM::Instruction::runtimeInitialize() {
 // SALAM-BadInstruction // --------------------------------------------------//
 
 std::shared_ptr<SALAM::Instruction>
-createBadInst(uint64_t id,
+createBadInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles)
+              uint64_t cycles,
+              uint64_t fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::BadInstruction>(id, OpCode, cycles);
+    return std::make_shared<SALAM::BadInstruction>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-BadInstruction::BadInstruction(uint64_t id,
+BadInstruction::BadInstruction(uint64_t id, gem5::SimObject * owner, bool dbg,
                                uint64_t OpCode,
-              uint64_t cycles) :
-                               Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+                               Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -381,42 +339,29 @@ BadInstruction::initialize(llvm::Value * irval,
                            irvmap * irmap,
                            SALAM::valueListTy * valueList)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
 }
 
 // SALAM-Ret // -------------------------------------------------------------//
 void // Debugging Interface
 Ret::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
 }
 
 std::shared_ptr<SALAM::Instruction>
-createRetInst(uint64_t id,
+createRetInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles)
+              uint64_t cycles,
+              uint64_t fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Ret>(id, OpCode, cycles);
+    return std::make_shared<SALAM::Ret>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Ret::Ret(uint64_t id,
+Ret::Ret(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -429,47 +374,36 @@ Ret::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
 }
 
 void
 Ret::compute() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     // Ret never calls compute. Special handling occurs in the scheduler.
 }
 
 // SALAM-Br // --------------------------------------------------------------//
 void // Debugging Interface
 Br::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "%s%s%s\n\t\t %s%d\n\t\t %s%d%s\n",
-    //         "|-(", llvm::Instruction::getOpcodeName(conditions.at(0).at(1)), " Instruction)",
-    //         " | Opcode: ", conditions.at(0).at(1),
-    //         " | Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createBrInst(uint64_t id,
+createBrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles)
+              uint64_t cycles,
+              uint64_t fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Br>(id, OpCode, cycles);
+    return std::make_shared<SALAM::Br>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Br::Br(uint64_t id,
+Br::Br(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
+
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -479,33 +413,32 @@ Br::Br(uint64_t id,
 
 std::shared_ptr<SALAM::BasicBlock>
 Br::getTarget() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++getTarget()\n");
-    DPRINTF(RuntimeCompute, "|| Launching Branch: %s\n", ir_string);
+
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Launching Branch: %s\n", ir_string);
     if(conditional) {
     #if USE_LLVM_AP_VALUES
         if (condition->getIntRegValue().isOneValue()) {
-            DPRINTF(RuntimeCompute, "|| Condition: TRUE, Fetching target %s\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Condition: TRUE, Fetching target %s\n",
                 trueDestination->getIRStub());
             return trueDestination;
         } else {
-            DPRINTF(RuntimeCompute, "|| Condition: FALSE, Fetching target %s\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Condition: FALSE, Fetching target %s\n",
                 falseDestination->getIRStub());
             return falseDestination;
         }
     #else
         if(condition->getUIntRegValue() == 1) {
-            DPRINTF(RuntimeCompute, "|| Condition: TRUE, Fetching target %s\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Condition: TRUE, Fetching target %s\n",
                 trueDestination->getIRStub());
             return trueDestination;
         } else {
-            DPRINTF(RuntimeCompute, "|| Condition: FALSE, Fetching target %s\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Condition: FALSE, Fetching target %s\n",
                 falseDestination->getIRStub());
             return falseDestination;
         }
     #endif
     }
-    DPRINTF(RuntimeCompute, "|| Fetching target %s\n", defaultDestination->getIRStub());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Fetching target %s\n", defaultDestination->getIRStub());
     return defaultDestination;
 }
 
@@ -514,7 +447,6 @@ Br::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     // SALAM::Instruction::initialize(irval, irmap, valueList); // We don't use the normal init fxn
     SALAM::Value::initialize(irval, irmap);
     llvm::BranchInst * br = llvm::dyn_cast<llvm::BranchInst>(irval);
@@ -523,7 +455,7 @@ Br::initialize(llvm::Value * irval,
     llvm::Value * defaultDestValue = br->getSuccessor(0);
     auto mapit = irmap->find(defaultDestValue);
     if(mapit == irmap->end()) {
-        DPRINTF(Runtime, "ERROR. Could not find default successor for Br in IR map.");
+        if (dbg) DPRINTFS(Runtime, owner, "ERROR. Could not find default successor for Br in IR map.");
         assert(0);
     } else {
         defaultDestination = std::dynamic_pointer_cast<SALAM::BasicBlock>(mapit->second);
@@ -532,7 +464,7 @@ Br::initialize(llvm::Value * irval,
         llvm::Value * condValue = br->getCondition();
         mapit = irmap->find(condValue);
         if(mapit == irmap->end()) {
-            DPRINTF(Runtime, "ERROR. Could not find condition for Br in IR map.");
+            if (dbg) DPRINTFS(Runtime, owner, "ERROR. Could not find condition for Br in IR map.");
             assert(0);
         } else {
             condition = mapit->second;
@@ -542,7 +474,7 @@ Br::initialize(llvm::Value * irval,
             llvm::Value * falseDestValue = br->getSuccessor(1);
             mapit = irmap->find(falseDestValue);
             if(mapit == irmap->end()) {
-                DPRINTF(Runtime, "ERROR. Could not find secondary successor for Br in IR map.");
+                if (dbg) DPRINTFS(Runtime, owner, "ERROR. Could not find secondary successor for Br in IR map.");
                 assert(0);
             } else {
                 falseDestination = std::dynamic_pointer_cast<SALAM::BasicBlock>(mapit->second);
@@ -554,43 +486,31 @@ Br::initialize(llvm::Value * irval,
 void
 Br::compute()
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
     // Br does not use compute. Special handling occurs in the scheduler.
 }
 
 // SALAM-Switch // ----------------------------------------------------------//
 void // Debugging Interface
 Switch::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createSwitchInst(uint64_t id,
+createSwitchInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles)
+              uint64_t cycles,
+              uint64_t fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Switch>(id, OpCode, cycles);
+    return std::make_shared<SALAM::Switch>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Switch::Switch(uint64_t id,
+Switch::Switch(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
+
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -600,7 +520,7 @@ Switch::Switch(uint64_t id,
 
 std::shared_ptr<SALAM::BasicBlock>
 Switch::getTarget() {
-    DPRINTF(RuntimeCompute, "|| Launching Switch: %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Launching Switch: %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     auto opdata = (operands.front().getIntRegValue());
 
@@ -627,7 +547,6 @@ Switch::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     // SALAM::Instruction::initialize(irval, irmap, valueList);
     SALAM::Value::initialize(irval, irmap);
 
@@ -642,18 +561,18 @@ Switch::initialize(llvm::Value * irval,
         std::shared_ptr<SALAM::Value> opval;
         if(mapit == irmap->end()) {
             // TODO: Handle constant data and constant expressions
-            DPRINTF(LLVMInterface, "Instantiate Operand as Constant Data/Expression\n");
+            if (dbg) DPRINTFS(LLVMParse, owner, "Instantiate Operand as Constant Data/Expression\n");
             uint64_t id = valueList->back()->getUID() + 1;
-            std::shared_ptr<SALAM::Constant> con = std::make_shared<SALAM::Constant>(id);
+            std::shared_ptr<SALAM::Constant> con = std::make_shared<SALAM::Constant>(id, owner, dbg);
             valueList->push_back(con);
             irmap->insert(SALAM::irvmaptype(op, con));
             con->initialize(op, irmap, valueList);
             opval = con;
         } else {
-            DPRINTF(LLVMInterface, "Instantiate Operands on Value List\n");
+            if (dbg) DPRINTFS(LLVMParse, owner, "Instantiate Operands on Value List\n");
             opval = mapit->second;
         }
-        DPRINTF(LLVMInterface, "Link Operand to Static Operands List\n");
+        if (dbg) DPRINTFS(LLVMParse, owner, "Link Operand to Static Operands List\n");
         tmpStaticDeps.push_back(opval);
     }
 
@@ -673,7 +592,7 @@ Switch::initialize(llvm::Value * irval,
 // std::shared_ptr<SALAM::Value>
 // Switch::destination(int switchVar)
 // {
-//     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
+//   
 //     for (int i = 2; i < this->arguments.size(); ++i) {
 //     #if USE_LLVM_AP_VALUES
 //         if (this->arguments.at(i).first->getReg()->getIntData()->getSExtValue() == switchVar) return this->arguments.at(i).second;
@@ -694,34 +613,25 @@ Switch::compute() {
 // SALAM-Add // -------------------------------------------------------------//
 void // Debugging Interface
 Add::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "%s%s%s\n\t\t %s%d\n\t\t %s%d%s\n",
-    //         "|-(", llvm::Instruction::getOpcodeName(conditions.at(0).at(1)), " Instruction)",
-    //         " | Opcode: ", conditions.at(0).at(1),
-    //         " | Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createAddInst(uint64_t id,
+createAddInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles)
+              uint64_t cycles,
+              uint64_t fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Add>(id, OpCode, cycles);
+    return std::make_shared<SALAM::Add>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Add::Add(uint64_t id,
+Add::Add(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
+
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -734,15 +644,12 @@ Add::initialize(llvm::Value *irval,
                 SALAM::irvmap *irmap,
                 SALAM::valueListTy *valueList)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
 }
 
 void
 Add::compute() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -753,18 +660,18 @@ Add::compute() {
     op1.toStringUnsigned(op1str);
     op2.toStringUnsigned(op2str);
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s + (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s + (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     uint64_t op1 = operands.at(0).getUIntRegValue();
     uint64_t op2 = operands.at(1).getUIntRegValue();
     uint64_t result = op1 + op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d + (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d + (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -772,34 +679,24 @@ Add::compute() {
 // SALAM-FAdd // ------------------------------------------------------------//
 void // Debugging Interface
 FAdd::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createFAddInst(uint64_t id,
+createFAddInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::FAdd>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::FAdd>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-FAdd::FAdd(uint64_t id,
+FAdd::FAdd(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
+
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -811,7 +708,6 @@ void
 FAdd::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
 }
 
@@ -819,9 +715,7 @@ void
 FAdd::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APFloat op1 = (operands.at(0).getFloatRegValue());
     llvm::APFloat op2 = (operands.at(1).getFloatRegValue());
@@ -832,10 +726,10 @@ FAdd::compute() {
     op1.toString(op1str);
     op2.toString(op2str);
     result.toString(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s + (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s + (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
     setRegisterValue(result);
 #else
     uint64_t bitcastResult;
@@ -845,10 +739,10 @@ FAdd::compute() {
             float op1 = operands.at(0).getFloatFromReg();
             float op2 = operands.at(1).getFloatFromReg();
             float result = op1 + op2;
-            DPRINTF(RuntimeCompute, "|| (%s) %f + (%s) %f\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %f + (%s) %f\n",
                 operands.at(0).getIRStub(), op1,
                 operands.at(1).getIRStub(), op2);
-            DPRINTF(RuntimeCompute, "|| %s = %f\n", ir_stub, result);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %f\n", ir_stub, result);
             bitcastResult = *(uint64_t *)&result;
             break;
         }
@@ -857,10 +751,10 @@ FAdd::compute() {
             double op1 = operands.at(0).getDoubleFromReg();
             double op2 = operands.at(1).getDoubleFromReg();
             double result = op1 + op2;
-            DPRINTF(RuntimeCompute, "|| (%s) %f + (%s) %f\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %f + (%s) %f\n",
                 operands.at(0).getIRStub(), op1,
                 operands.at(1).getIRStub(), op2);
-            DPRINTF(RuntimeCompute, "|| %s = %f\n", ir_stub, result);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %f\n", ir_stub, result);
             bitcastResult = *(uint64_t *)&result;
             break;
         }
@@ -877,34 +771,22 @@ FAdd::compute() {
 // SALAM-Sub // -------------------------------------------------------------//
 void // Debugging Interface
 Sub::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
 }
 
 std::shared_ptr<SALAM::Instruction>
-createSubInst(uint64_t id,
+createSubInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Sub>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::Sub>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Sub::Sub(uint64_t id,
+Sub::Sub(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -916,7 +798,6 @@ void
 Sub::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -925,9 +806,7 @@ void
 Sub::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -938,18 +817,18 @@ Sub::compute() {
     op1.toStringUnsigned(op1str);
     op2.toStringUnsigned(op2str);
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s - (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s - (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     uint64_t op1 = operands.at(0).getUIntRegValue();
     uint64_t op2 = operands.at(1).getUIntRegValue();
     uint64_t result = op1 - op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d - (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d - (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -957,34 +836,23 @@ Sub::compute() {
 // SALAM-FSub // -------------------------------------------------------------//
 void // Debugging Interface
 FSub::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createFSubInst(uint64_t id,
+createFSubInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::FSub>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::FSub>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-FSub::FSub(uint64_t id,
+FSub::FSub(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -996,7 +864,6 @@ void
 FSub::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -1005,9 +872,7 @@ void
 FSub::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APFloat op1 = (operands.at(0).getFloatRegValue());
     llvm::APFloat op2 = (operands.at(1).getFloatRegValue());
@@ -1018,10 +883,10 @@ FSub::compute() {
     op1.toString(op1str);
     op2.toString(op2str);
     result.toString(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s - (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s - (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
     setRegisterValue(result);
 #else
     uint64_t bitcastResult;
@@ -1031,10 +896,10 @@ FSub::compute() {
             float op1 = operands.at(0).getFloatFromReg();
             float op2 = operands.at(1).getFloatFromReg();
             float result = op1 - op2;
-            DPRINTF(RuntimeCompute, "|| (%s) %f - (%s) %f\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %f - (%s) %f\n",
                 operands.at(0).getIRStub(), op1,
                 operands.at(1).getIRStub(), op2);
-            DPRINTF(RuntimeCompute, "|| %s = %f\n", ir_stub, result);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %f\n", ir_stub, result);
             bitcastResult = *(uint64_t *)&result;
             break;
         }
@@ -1043,10 +908,10 @@ FSub::compute() {
             double op1 = operands.at(0).getDoubleFromReg();
             double op2 = operands.at(1).getDoubleFromReg();
             double result = op1 - op2;
-            DPRINTF(RuntimeCompute, "|| (%s) %f - (%s) %f\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %f - (%s) %f\n",
                 operands.at(0).getIRStub(), op1,
                 operands.at(1).getIRStub(), op2);
-            DPRINTF(RuntimeCompute, "|| %s = %f\n", ir_stub, result);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %f\n", ir_stub, result);
             bitcastResult = *(uint64_t *)&result;
             break;
         }
@@ -1063,33 +928,23 @@ FSub::compute() {
 // SALAM-Mul // -------------------------------------------------------------//
 void // Debugging Interface
 Mul::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "%s%s%s\n\t\t %s%d\n\t\t %s%d%s\n",
-    //         "|-(", llvm::Instruction::getOpcodeName(conditions.at(0).at(1)), " Instruction)",
-    //         " | Opcode: ", conditions.at(0).at(1),
-    //         " | Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createMulInst(uint64_t id,
+createMulInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Mul>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::Mul>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Mul::Mul(uint64_t id,
+Mul::Mul(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -1101,16 +956,13 @@ void
 Mul::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
 
 void
 Mul::compute() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -1121,18 +973,18 @@ Mul::compute() {
     op1.toStringUnsigned(op1str);
     op2.toStringUnsigned(op2str);
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s * (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s * (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     uint64_t op1 = operands.at(0).getUIntRegValue();
     uint64_t op2 = operands.at(1).getUIntRegValue();
     uint64_t result = op1 * op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d * (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d * (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -1140,34 +992,23 @@ Mul::compute() {
 // SALAM-FMul // ------------------------------------------------------------//
 void // Debugging Interface
 FMul::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createFMulInst(uint64_t id,
+createFMulInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::FMul>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::FMul>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-FMul::FMul(uint64_t id,
+FMul::FMul(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -1179,7 +1020,6 @@ void
 FMul::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -1188,9 +1028,7 @@ void
 FMul::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APFloat op1 = (operands.at(0).getFloatRegValue());
     llvm::APFloat op2 = (operands.at(1).getFloatRegValue());
@@ -1201,10 +1039,10 @@ FMul::compute() {
     op1.toString(op1str);
     op2.toString(op2str);
     result.toString(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s * (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s * (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
     setRegisterValue(result);
 #else
     uint64_t bitcastResult;
@@ -1214,10 +1052,10 @@ FMul::compute() {
             float op1 = operands.at(0).getFloatFromReg();
             float op2 = operands.at(1).getFloatFromReg();
             float result = op1 * op2;
-            DPRINTF(RuntimeCompute, "|| (%s) %f * (%s) %f\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %f * (%s) %f\n",
                 operands.at(0).getIRStub(), op1,
                 operands.at(1).getIRStub(), op2);
-            DPRINTF(RuntimeCompute, "|| %s = %f\n", ir_stub, result);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %f\n", ir_stub, result);
             bitcastResult = *(uint64_t *)&result;
             break;
         }
@@ -1226,10 +1064,10 @@ FMul::compute() {
             double op1 = operands.at(0).getDoubleFromReg();
             double op2 = operands.at(1).getDoubleFromReg();
             double result = op1 * op2;
-            DPRINTF(RuntimeCompute, "|| (%s) %f * (%s) %f\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %f * (%s) %f\n",
                 operands.at(0).getIRStub(), op1,
                 operands.at(1).getIRStub(), op2);
-            DPRINTF(RuntimeCompute, "|| %s = %f\n", ir_stub, result);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %f\n", ir_stub, result);
             bitcastResult = *(uint64_t *)&result;
             break;
         }
@@ -1246,34 +1084,23 @@ FMul::compute() {
 // SALAM-UDiv // ------------------------------------------------------------//
 void // Debugging Interface
 UDiv::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createUDivInst(uint64_t id,
+createUDivInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::UDiv>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::UDiv>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-UDiv::UDiv(uint64_t id,
+UDiv::UDiv(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -1285,7 +1112,6 @@ void
 UDiv::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -1294,9 +1120,7 @@ void
 UDiv::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -1307,18 +1131,18 @@ UDiv::compute() {
     op1.toStringUnsigned(op1str);
     op2.toStringUnsigned(op2str);
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s / (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s / (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     uint64_t op1 = operands.at(0).getUIntRegValue();
     uint64_t op2 = operands.at(1).getUIntRegValue();
     uint64_t result = op1 / op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d / (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d / (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -1326,34 +1150,23 @@ UDiv::compute() {
 // SALAM-SDiv // ------------------------------------------------------------//
 void // Debugging Interface
 SDiv::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createSDivInst(uint64_t id,
+createSDivInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::SDiv>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::SDiv>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-SDiv::SDiv(uint64_t id,
+SDiv::SDiv(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -1365,7 +1178,6 @@ void
 SDiv::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -1374,9 +1186,7 @@ void
 SDiv::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -1387,19 +1197,19 @@ SDiv::compute() {
     op1.toStringSigned(op1str);
     op2.toStringSigned(op2str);
     result.toStringSigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s / (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s / (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
     setRegisterValue(result);
 #else
     int64_t op1 = operands.at(0).getSIntRegValue();
     int64_t op2 = operands.at(1).getSIntRegValue();
     int64_t result = op1 / op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d / (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d / (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
     setRegisterValue((uint64_t)result);
 #endif
 }
@@ -1407,34 +1217,23 @@ SDiv::compute() {
 // SALAM-FDiv // ------------------------------------------------------------//
 void // Debugging Interface
 FDiv::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createFDivInst(uint64_t id,
+createFDivInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::FDiv>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::FDiv>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-FDiv::FDiv(uint64_t id,
+FDiv::FDiv(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -1446,7 +1245,6 @@ void
 FDiv::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -1455,9 +1253,7 @@ void
 FDiv::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APFloat op1 = (operands.at(0).getFloatRegValue());
     llvm::APFloat op2 = (operands.at(1).getFloatRegValue());
@@ -1468,10 +1264,10 @@ FDiv::compute() {
     op1.toString(op1str);
     op2.toString(op2str);
     result.toString(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s / (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s / (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
     setRegisterValue(result);
 #else
     uint64_t bitcastResult;
@@ -1481,10 +1277,10 @@ FDiv::compute() {
             float op1 = operands.at(0).getFloatFromReg();
             float op2 = operands.at(1).getFloatFromReg();
             float result = op1 / op2;
-            DPRINTF(RuntimeCompute, "|| (%s) %f / (%s) %f\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %f / (%s) %f\n",
                 operands.at(0).getIRStub(), op1,
                 operands.at(1).getIRStub(), op2);
-            DPRINTF(RuntimeCompute, "|| %s = %f\n", ir_stub, result);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %f\n", ir_stub, result);
             bitcastResult = *(uint64_t *)&result;
             break;
         }
@@ -1493,10 +1289,10 @@ FDiv::compute() {
             double op1 = operands.at(0).getDoubleFromReg();
             double op2 = operands.at(1).getDoubleFromReg();
             double result = op1 / op2;
-            DPRINTF(RuntimeCompute, "|| (%s) %f / (%s) %f\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %f / (%s) %f\n",
                 operands.at(0).getIRStub(), op1,
                 operands.at(1).getIRStub(), op2);
-            DPRINTF(RuntimeCompute, "|| %s = %f\n", ir_stub, result);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %f\n", ir_stub, result);
             bitcastResult = *(uint64_t *)&result;
             break;
         }
@@ -1513,34 +1309,23 @@ FDiv::compute() {
 // SALAM-URem // ------------------------------------------------------------//
 void // Debugging Interface
 URem::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createURemInst(uint64_t id,
+createURemInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::URem>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::URem>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-URem::URem(uint64_t id,
+URem::URem(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -1552,7 +1337,6 @@ void
 URem::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -1561,9 +1345,7 @@ void
 URem::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -1574,18 +1356,18 @@ URem::compute() {
     op1.toStringUnsigned(op1str);
     op2.toStringUnsigned(op2str);
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s % (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s % (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     uint64_t op1 = operands.at(0).getUIntRegValue();
     uint64_t op2 = operands.at(1).getUIntRegValue();
     uint64_t result = op1 % op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d % (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d % (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -1593,34 +1375,23 @@ URem::compute() {
 // SALAM-SRem // ------------------------------------------------------------//
 void // Debugging Interface
 SRem::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createSRemInst(uint64_t id,
+createSRemInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::SRem>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::SRem>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-SRem::SRem(uint64_t id,
+SRem::SRem(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -1632,7 +1403,6 @@ void
 SRem::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -1641,9 +1411,7 @@ void
 SRem::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -1654,19 +1422,19 @@ SRem::compute() {
     op1.toStringSigned(op1str);
     op2.toStringSigned(op2str);
     result.toStringSigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s % (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s % (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
     setRegisterValue(result);
 #else
     int64_t op1 = operands.at(0).getSIntRegValue();
     int64_t op2 = operands.at(1).getSIntRegValue();
     int64_t result = op1 % op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d % (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d % (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
     setRegisterValue((uint64_t)result);
 #endif
 }
@@ -1674,34 +1442,23 @@ SRem::compute() {
 // SALAM-FRem // ------------------------------------------------------------//
 void // Debugging Interface
 FRem::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createFRemInst(uint64_t id,
+createFRemInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::FRem>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::FRem>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-FRem::FRem(uint64_t id,
+FRem::FRem(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -1713,7 +1470,6 @@ void
 FRem::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -1722,9 +1478,7 @@ void
 FRem::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APFloat op1 = (operands.at(0).getFloatRegValue());
     llvm::APFloat op2 = (operands.at(1).getFloatRegValue());
@@ -1737,10 +1491,10 @@ FRem::compute() {
     op1.toString(op1str);
     op2.toString(op2str);
     result.toString(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s % (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s % (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
     setRegisterValue(result);
 #else
     uint64_t bitcastResult;
@@ -1750,10 +1504,10 @@ FRem::compute() {
             float op1 = operands.at(0).getFloatFromReg();
             float op2 = operands.at(1).getFloatFromReg();
             float result = std::remainderf(op1, op2);
-            DPRINTF(RuntimeCompute, "|| (%s) %f % (%s) %f\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %f % (%s) %f\n",
                 operands.at(0).getIRStub(), op1,
                 operands.at(1).getIRStub(), op2);
-            DPRINTF(RuntimeCompute, "|| %s = %f\n", ir_stub, result);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %f\n", ir_stub, result);
             bitcastResult = *(uint64_t *)&result;
             break;
         }
@@ -1762,10 +1516,10 @@ FRem::compute() {
             double op1 = operands.at(0).getDoubleFromReg();
             double op2 = operands.at(1).getDoubleFromReg();
             double result = std::remainder(op1, op2);
-            DPRINTF(RuntimeCompute, "|| (%s) %f % (%s) %f\n",
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %f % (%s) %f\n",
                 operands.at(0).getIRStub(), op1,
                 operands.at(1).getIRStub(), op2);
-            DPRINTF(RuntimeCompute, "|| %s = %f\n", ir_stub, result);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %f\n", ir_stub, result);
             bitcastResult = *(uint64_t *)&result;
             break;
         }
@@ -1782,34 +1536,23 @@ FRem::compute() {
 // SALAM-Shl // -------------------------------------------------------------//
 void // Debugging Interface
 Shl::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createShlInst(uint64_t id,
+createShlInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Shl>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::Shl>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Shl::Shl(uint64_t id,
+Shl::Shl(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -1821,7 +1564,6 @@ void
 Shl::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -1830,9 +1572,7 @@ void
 Shl::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -1843,18 +1583,18 @@ Shl::compute() {
     op1.toStringUnsigned(op1str);
     op2.toStringUnsigned(op2str);
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s << (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s << (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     uint64_t op1 = operands.at(0).getUIntRegValue();
     uint64_t op2 = operands.at(1).getUIntRegValue();
     uint64_t result = op1 << op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d << (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d << (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -1862,34 +1602,23 @@ Shl::compute() {
 // SALAM-LShr // ------------------------------------------------------------//
 void // Debugging Interface
 LShr::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createLShrInst(uint64_t id,
+createLShrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::LShr>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::LShr>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-LShr::LShr(uint64_t id,
+LShr::LShr(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -1901,7 +1630,6 @@ void
 LShr::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -1910,9 +1638,7 @@ void
 LShr::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -1923,18 +1649,18 @@ LShr::compute() {
     op1.toStringUnsigned(op1str);
     op2.toStringUnsigned(op2str);
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s >> (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s >> (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     uint64_t op1 = operands.at(0).getUIntRegValue();
     uint64_t op2 = operands.at(1).getUIntRegValue();
     uint64_t result = op1 >> op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d >> (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d >> (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -1942,34 +1668,23 @@ LShr::compute() {
 // SALAM-AShr // ------------------------------------------------------------//
 void // Debugging Interface
 AShr::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createAShrInst(uint64_t id,
+createAShrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::AShr>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::AShr>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-AShr::AShr(uint64_t id,
+AShr::AShr(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -1981,7 +1696,6 @@ void
 AShr::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -1990,9 +1704,7 @@ void
 AShr::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -2003,19 +1715,19 @@ AShr::compute() {
     op1.toStringSigned(op1str);
     op2.toStringSigned(op2str);
     result.toStringSigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s >> (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s >> (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
     setRegisterValue(result);
 #else
     int64_t op1 = operands.at(0).getSIntRegValue();
     int64_t op2 = operands.at(1).getSIntRegValue();
     int64_t result = op1 >> op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d >> (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d >> (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
     setRegisterValue((uint64_t)result);
 #endif
 }
@@ -2023,34 +1735,23 @@ AShr::compute() {
 // SALAM-And // -------------------------------------------------------------//
 void // Debugging Interface
 And::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createAndInst(uint64_t id,
+createAndInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::And>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::And>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-And::And(uint64_t id,
+And::And(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2062,7 +1763,6 @@ void
 And::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -2071,9 +1771,7 @@ void
 And::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -2084,18 +1782,18 @@ And::compute() {
     op1.toStringUnsigned(op1str);
     op2.toStringUnsigned(op2str);
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s & (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s & (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     uint64_t op1 = operands.at(0).getUIntRegValue();
     uint64_t op2 = operands.at(1).getUIntRegValue();
     uint64_t result = op1 & op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d & (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d & (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -2103,34 +1801,23 @@ And::compute() {
 // SALAM-Or // --------------------------------------------------------------//
 void // Debugging Interface
 Or::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createOrInst(uint64_t id,
+createOrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Or>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::Or>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Or::Or(uint64_t id,
+Or::Or(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2142,7 +1829,6 @@ void
 Or::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -2151,9 +1837,7 @@ void
 Or::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -2164,18 +1848,18 @@ Or::compute() {
     op1.toStringUnsigned(op1str);
     op2.toStringUnsigned(op2str);
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s | (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s | (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     uint64_t op1 = operands.at(0).getUIntRegValue();
     uint64_t op2 = operands.at(1).getUIntRegValue();
     uint64_t result = op1 | op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d | (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d | (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -2183,34 +1867,23 @@ Or::compute() {
 // SALAM-Xor // -------------------------------------------------------------//
 void // Debugging Interface
 Xor::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createXorInst(uint64_t id,
+createXorInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Xor>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::Xor>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Xor::Xor(uint64_t id,
+Xor::Xor(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2222,7 +1895,6 @@ void
 Xor::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -2231,9 +1903,7 @@ void
 Xor::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt op1 = (operands.at(0).getIntRegValue());
     llvm::APInt op2 = (operands.at(1).getIntRegValue());
@@ -2244,18 +1914,18 @@ Xor::compute() {
     op1.toStringUnsigned(op1str);
     op2.toStringUnsigned(op2str);
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| (%s) %s ^ (%s) %s \n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %s ^ (%s) %s \n",
         operands.at(0).getIRStub(), op1str.c_str(),
         operands.at(1).getIRStub(), op2str.c_str());
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     uint64_t op1 = operands.at(0).getUIntRegValue();
     uint64_t op2 = operands.at(1).getUIntRegValue();
     uint64_t result = op1 ^ op2;
-    DPRINTF(RuntimeCompute, "|| (%s) %d ^ (%s) %d\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| (%s) %d ^ (%s) %d\n",
         operands.at(0).getIRStub(), op1,
         operands.at(1).getIRStub(), op2);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -2263,33 +1933,23 @@ Xor::compute() {
 // SALAM-Load // ------------------------------------------------------------//
 void // Debugging Interface
 Load::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "%s%s%s\n\t\t %s%d\n\t\t %s%d%s\n",
-    //         "|-(", llvm::Instruction::getOpcodeName(conditions.at(0).at(1)), " Instruction)",
-    //         " | Opcode: ", conditions.at(0).at(1),
-    //         " | Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createLoadInst(uint64_t id,
+createLoadInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Load>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::Load>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Load::Load(uint64_t id,
+Load::Load(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2301,7 +1961,6 @@ void
 Load::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
     llvm::LoadInst * inst = llvm::dyn_cast<llvm::LoadInst>(irval);
@@ -2311,18 +1970,16 @@ Load::initialize(llvm::Value * irval,
 
 void
 Load::compute() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
     // Load does not use compute normally. Special handling is used in the scheduler.
     // We instead use compute just for debug printout
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, registerDataString());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, registerDataString());
 }
 
 void
 Load::loadInternal() {
-    DPRINTF(RuntimeCompute, "|| Launching %s\n", ir_string);
-    DPRINTF(RuntimeCompute, "|| Loading internal value from %s\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Launching %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Loading internal value from %s\n",
         operands.front().getIRString());
     setRegisterValue(operands.front().getOpRegister());
     commit();
@@ -2330,46 +1987,33 @@ Load::loadInternal() {
 
 MemoryRequest *
 Load::createMemoryRequest() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++createMemoryRequest()\n");
     Addr memAddr = (operands.front().getPtrRegValue());
     // std::cerr << "|| Creating load memory request for " << ir_string << " at " << memAddr << std::endl;
     size_t reqLen = getSizeInBytes();
-    DPRINTF(RuntimeCompute, "|| Launching %s\n", ir_string);
-    DPRINTF(RuntimeCompute, "|| Addr[%x] Size[%i]\n", memAddr, reqLen);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Launching %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Addr[%x] Size[%i]\n", memAddr, reqLen);
     return new MemoryRequest(memAddr, reqLen);
 }
 
 // SALAM-Store // -----------------------------------------------------------//
 void // Debugging Interface
 Store::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "%s%s%s\n\t\t %s%d\n\t\t %s%d%s\n",
-    //         "|-(", llvm::Instruction::getOpcodeName(conditions.at(0).at(1)), " Instruction)",
-    //         " | Opcode: ", conditions.at(0).at(1),
-    //         " | Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
 }
 
 std::shared_ptr<SALAM::Instruction>
-createStoreInst(uint64_t id,
+createStoreInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Store>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::Store>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Store::Store(uint64_t id,
+Store::Store(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2381,7 +2025,6 @@ void
 Store::initialize(llvm::Value * irval,
                         irvmap * irmap,
                         SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
     llvm::StoreInst * inst = llvm::dyn_cast<llvm::StoreInst>(irval);
@@ -2390,8 +2033,6 @@ Store::initialize(llvm::Value * irval,
 
 void
 Store::compute() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
     // Store does not use compute. Special handling is used in the scheduler.
 }
 
@@ -2427,8 +2068,8 @@ Store::createMemoryRequest() {
         }
         req = new MemoryRequest(memAddr, (uint8_t *)&regData, reqLen);
     #endif
-        DPRINTF(RuntimeCompute, "|| Launching %s\n", ir_string);
-        DPRINTF(RuntimeCompute, "|| Addr[%x] Size[%i]\n", memAddr, reqLen);
+        if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Launching %s\n", ir_string);
+        if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Addr[%x] Size[%i]\n", memAddr, reqLen);
     }
 
     return req;
@@ -2437,33 +2078,22 @@ Store::createMemoryRequest() {
 // SALAM-GEP // -------------------------------------------------------------//
 void // Debugging Interface
 GetElementPtr::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "%s%s%s\n\t\t %s%d\n\t\t %s%d%s\n",
-    //         "|-(", llvm::Instruction::getOpcodeName(conditions.at(0).at(1)), " Instruction)",
-    //         " | Opcode: ", conditions.at(0).at(1),
-    //         " | Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
 }
 
 std::shared_ptr<SALAM::Instruction>
-createGetElementPtrInst(uint64_t id,
+createGetElementPtrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::GetElementPtr>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::GetElementPtr>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-GetElementPtr::GetElementPtr(uint64_t id,
+GetElementPtr::GetElementPtr(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2475,7 +2105,6 @@ void
 GetElementPtr::initialize(llvm::Value * irval,
                             irvmap * irmap,
                             SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
     llvm::User * iruser = llvm::dyn_cast<llvm::User>(irval);
@@ -2506,7 +2135,7 @@ GetElementPtr::initialize(llvm::Value * irval,
     for ( ; GTI != GTE; ++GTI) {
         llvm::Value *idx = GTI.getOperand();
         auto SALAMValue = irmap->find(idx)->second;
-        auto valueID = SALAMValue->getUID();
+        // auto valueID = SALAMValue->getUID();
         if (llvm::StructType *STy = GTI.getStructTypeOrNull()) {
             assert(idx->getType()->isIntegerTy(32) && "Illegal struct idx");
             unsigned FieldNo = llvm::cast<llvm::ConstantInt>(idx)->getSExtValue();
@@ -2524,67 +2153,52 @@ GetElementPtr::initialize(llvm::Value * irval,
 
 void
 GetElementPtr::compute() {
-
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
     uint64_t ptr = (operands.front().getPtrRegValue());
     int64_t offset = 0;
-    DPRINTF(RuntimeCompute, "|| Index Values\n");
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Index Values\n");
     for (int i = 1; i < operands.size(); i++) {
         auto idx = operands.at(i);
         if (offsetOfStruct.at(i-1)) {
             offset += offsets.at(i-1);
-            DPRINTF(RuntimeCompute, "|| %s, struct offset = %d\n", idx.getIRStub(), offsets.at(i-1));
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s, struct offset = %d\n", idx.getIRStub(), offsets.at(i-1));
         } else {
         #if USE_LLVM_AP_VALUES
             int64_t arrayIdx = idx.getIntRegValue().getSExtValue();
         #else
             int64_t arrayIdx = idx.getSIntRegValue();
         #endif
-            DPRINTF(RuntimeCompute, "|| %s = %d, dimension offset = %d\n", idx.getIRStub(), arrayIdx, offsets.at(i-1));
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d, dimension offset = %d\n", idx.getIRStub(), arrayIdx, offsets.at(i-1));
             offset += arrayIdx * offsets.at(i-1);
         }
     }
 
     uint64_t result = ptr + offset;
-    DPRINTF(RuntimeCompute, "|| Ptr[%x]  Offset[%x] (Flat Idx[%d])\n", ptr, offset, offset/resultElementSizeInBytes);
-    DPRINTF(RuntimeCompute, "|| Result: Addr[%x]\n", result);
-    // std::cerr << "Stting result to " << result << std::endl;
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Ptr[%x]  Offset[%x] (Flat Idx[%d])\n", ptr, offset, offset/resultElementSizeInBytes);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Result: Addr[%x]\n", result);
     setRegisterValue(result);
 }
 
 // SALAM-Trunc // -----------------------------------------------------------//
 void // Debugging Interface
 Trunc::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createTruncInst(uint64_t id,
+createTruncInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Trunc>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::Trunc>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Trunc::Trunc(uint64_t id,
+Trunc::Trunc(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2596,7 +2210,6 @@ void
 Trunc::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -2605,18 +2218,16 @@ void
 Trunc::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt result = operands.at(0).getIntRegValue().trunc(size);
     llvm::SmallString<8> resstr;
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     // The trunc is handled automatically when we set the return register
     uint64_t result = operands.at(0).getUIntRegValue();
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -2624,34 +2235,23 @@ Trunc::compute() {
 // SALAM-ZExt // ------------------------------------------------------------//
 void // Debugging Interface
 ZExt::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createZExtInst(uint64_t id,
+createZExtInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::ZExt>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::ZExt>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-ZExt::ZExt(uint64_t id,
+ZExt::ZExt(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2663,7 +2263,6 @@ void
 ZExt::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -2672,18 +2271,16 @@ void
 ZExt::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt result = operands.at(0).getIntRegValue().zext(size);
     llvm::SmallString<8> resstr;
     result.toStringUnsigned(resstr);
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
 #else
     // Unsigned data doesn't need any modification when ZExtending
     uint64_t result = operands.at(0).getUIntRegValue();
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
 #endif
     setRegisterValue(result);
 }
@@ -2691,34 +2288,23 @@ ZExt::compute() {
 // SALAM-SExt // ------------------------------------------------------------//
 void // Debugging Interface
 SExt::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createSExtInst(uint64_t id,
+createSExtInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::SExt>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::SExt>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-SExt::SExt(uint64_t id,
+SExt::SExt(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2730,7 +2316,6 @@ void
 SExt::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -2739,18 +2324,16 @@ void
 SExt::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 #if USE_LLVM_AP_VALUES
     llvm::APInt result = operands.at(0).getIntRegValue().sext(size);
     llvm::SmallString<8> resstr;
     result.toStringSigned(resstr);
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, resstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, resstr.c_str());
     setRegisterValue(result);
 #else
     int64_t result = operands.at(0).getSIntRegValue();
-    DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, result);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, result);
     setRegisterValue((uint64_t)result);
 #endif
 }
@@ -2758,34 +2341,23 @@ SExt::compute() {
 // SALAM-FPToUI // ----------------------------------------------------------//
 void // Debugging Interface
 FPToUI::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createFPToUIInst(uint64_t id,
+createFPToUIInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::FPToUI>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::FPToUI>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-FPToUI::FPToUI(uint64_t id,
+FPToUI::FPToUI(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2797,7 +2369,6 @@ void
 FPToUI::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -2820,21 +2391,21 @@ FPToUI::compute() {
     setRegisterValue(tmp);
     llvm::SmallString<8> tmpstr;
     tmp.toString(tmpstr);
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, tmpstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, tmpstr.c_str());
 #else
     switch (operands.front().getSize()) {
         case 32:
         {
             float opdata = operands.front().getFloatFromReg();
             setRegisterValue((uint64_t)opdata);
-            DPRINTF(RuntimeCompute, "|| Result: %u\n", (uint64_t)opdata);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Result: %u\n", (uint64_t)opdata);
             break;
         }
         case 64:
         {
             double opdata = operands.front().getDoubleFromReg();
             setRegisterValue((uint64_t)opdata);
-            DPRINTF(RuntimeCompute, "|| Result: %u\n", (uint64_t)opdata);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Result: %u\n", (uint64_t)opdata);
             break;
         }
         default:
@@ -2849,34 +2420,23 @@ FPToUI::compute() {
 // SALAM-FPToSI // ----------------------------------------------------------//
 void // Debugging Interface
 FPToSI::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createFPToSIInst(uint64_t id,
+createFPToSIInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::FPToSI>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::FPToSI>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-FPToSI::FPToSI(uint64_t id,
+FPToSI::FPToSI(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2888,7 +2448,6 @@ void
 FPToSI::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -2911,14 +2470,14 @@ FPToSI::compute() {
     setRegisterValue(tmp);
     llvm::SmallString<8> tmpstr;
     tmp.toString(tmpstr);
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, tmpstr.c_str());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, tmpstr.c_str());
 #else
     switch (operands.front().getSize()) {
         case 32:
         {
             float opdata = operands.front().getFloatFromReg();
             int64_t tmp = (int64_t)opdata; // Truncate to integer
-            DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, tmp);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, tmp);
             setRegisterValue((uint64_t)tmp);
             break;
         }
@@ -2926,7 +2485,7 @@ FPToSI::compute() {
         {
             double opdata = operands.front().getDoubleFromReg();
             int64_t tmp = (int64_t)opdata; // Truncate to integer
-            DPRINTF(RuntimeCompute, "|| %s = %d\n", ir_stub, tmp);
+            if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %d\n", ir_stub, tmp);
             setRegisterValue((uint64_t)tmp);
             break;
         }
@@ -2942,34 +2501,23 @@ FPToSI::compute() {
 // SALAM-UIToFP // ----------------------------------------------------------//
 void // Debugging Interface
 UIToFP::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createUIToFPInst(uint64_t id,
+createUIToFPInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::UIToFP>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::UIToFP>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-UIToFP::UIToFP(uint64_t id,
+UIToFP::UIToFP(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -2981,7 +2529,6 @@ void
 UIToFP::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -3026,34 +2573,23 @@ UIToFP::compute() {
 // SALAM-SIToFP // ----------------------------------------------------------//
 void // Debugging Interface
 SIToFP::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createSIToFPInst(uint64_t id,
+createSIToFPInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::SIToFP>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::SIToFP>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-SIToFP::SIToFP(uint64_t id,
+SIToFP::SIToFP(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -3065,7 +2601,6 @@ void
 SIToFP::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -3110,34 +2645,23 @@ SIToFP::compute() {
 // SALAM-FPTrunc // ---------------------------------------------------------//
 void // Debugging Interface
 FPTrunc::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createFPTruncInst(uint64_t id,
+createFPTruncInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::FPTrunc>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::FPTrunc>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-FPTrunc::FPTrunc(uint64_t id,
+FPTrunc::FPTrunc(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -3149,7 +2673,6 @@ void
 FPTrunc::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -3188,34 +2711,23 @@ FPTrunc::compute() {
 // SALAM-FPExt // -----------------------------------------------------------//
 void // Debugging Interface
 FPExt::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createFPExtInst(uint64_t id,
+createFPExtInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::FPExt>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::FPExt>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-FPExt::FPExt(uint64_t id,
+FPExt::FPExt(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -3227,7 +2739,6 @@ void
 FPExt::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -3266,34 +2777,23 @@ FPExt::compute() {
 // SALAM-PtrToInt // --------------------------------------------------------//
 void // Debugging Interface
 PtrToInt::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createPtrToIntInst(uint64_t id,
+createPtrToIntInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::PtrToInt>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::PtrToInt>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-PtrToInt::PtrToInt(uint64_t id,
+PtrToInt::PtrToInt(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -3305,7 +2805,6 @@ void
 PtrToInt::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -3323,34 +2822,23 @@ PtrToInt::compute() {
 // SALAM-IntToPtr // --------------------------------------------------------//
 void // Debugging Interface
 IntToPtr::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createIntToPtrInst(uint64_t id,
+createIntToPtrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::IntToPtr>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::IntToPtr>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-IntToPtr::IntToPtr(uint64_t id,
+IntToPtr::IntToPtr(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -3362,7 +2850,6 @@ void
 IntToPtr::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -3383,34 +2870,23 @@ IntToPtr::compute() {
 // SALAM-BitCast // --------------------------------------------------------//
 void // Debugging Interface
 BitCast::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createBitCastInst(uint64_t id,
+createBitCastInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::BitCast>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::BitCast>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-BitCast::BitCast(uint64_t id,
+BitCast::BitCast(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -3422,8 +2898,6 @@ void
 BitCast::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    //  (*irmap)[((llvm::Instruction *)irval)->getOperand(0)].get()->getIRStub() << "\n";
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
@@ -3443,33 +2917,22 @@ BitCast::compute() {
 // SALAM-ICmp // ------------------------------------------------------------//
 void // Debugging Interface
 ICmp::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "%s%s%s\n\t\t %s%d\n\t\t %s%d%s\n",
-    //         "|-(", llvm::Instruction::getOpcodeName(conditions.at(0).at(1)), " Instruction)",
-    //         " | Opcode: ", conditions.at(0).at(1),
-    //         " | Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
 }
 
 std::shared_ptr<SALAM::Instruction>
-createICmpInst(uint64_t id,
+createICmpInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::ICmp>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::ICmp>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-ICmp::ICmp(uint64_t id,
+ICmp::ICmp(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -3481,20 +2944,17 @@ void
 ICmp::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
     llvm::CmpInst * inst = llvm::dyn_cast<llvm::CmpInst>(irval);
     this->predicate = inst->getPredicate();
-    DPRINTF(SALAM_Debug, "Integer Comparison Predicate [%i | %s]\n", this->predicate, inst->getPredicateName(inst->getPredicate()).str());
+    if (dbg) DPRINTFS(SALAM_Debug, owner, "Integer Comparison Predicate [%i | %s]\n", this->predicate, inst->getPredicateName(inst->getPredicate()).str());
 
 }
 
 void
 ICmp::compute() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
     bool result = false;
 #if USE_LLVM_AP_VALUES
     if (operands.at(0).hasIntVal() && operands.at(1).hasIntVal()){
@@ -3561,40 +3021,29 @@ ICmp::compute() {
     }
 #endif
     setRegisterValue(result);
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, result ? "TRUE" : "FALSE");
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, result ? "TRUE" : "FALSE");
 }
 
 // SALAM-FCmp // ------------------------------------------------------------//
 void // Debugging Interface
 FCmp::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createFCmpInst(uint64_t id,
+createFCmpInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::FCmp>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::FCmp>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-FCmp::FCmp(uint64_t id,
+FCmp::FCmp(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -3606,12 +3055,11 @@ void
 FCmp::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
     llvm::CmpInst * inst = llvm::dyn_cast<llvm::CmpInst>(irval);
     this->predicate = inst->getPredicate();
-    DPRINTF(SALAM_Debug, "Floating-Point Comparison Predicate [%i | %s]\n", this->predicate, inst->getPredicateName(inst->getPredicate()).str());
+    if (dbg) DPRINTFS(SALAM_Debug, owner, "Floating-Point Comparison Predicate [%i | %s]\n", this->predicate, inst->getPredicateName(inst->getPredicate()).str());
 
 }
 
@@ -3619,9 +3067,7 @@ void
 FCmp::compute() {
     // Perform computations
     // Store results in temp location
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
     bool result = false;
 #if USE_LLVM_AP_VALUES
     auto op1 = operands.at(0).getFloatRegValue();
@@ -3794,39 +3240,29 @@ FCmp::compute() {
     }
 #endif
     setRegisterValue(result);
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, result ? "TRUE" : "FALSE");
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Comparing %f, %f\n", op1,op2);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, result ? "TRUE" : "FALSE");
 }
 
 // SALAM-Phi // -------------------------------------------------------------//
 void // Debugging Interface
 Phi::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "%s%s%s\n\t\t %s%d\n\t\t %s%d%s\n",
-    //         "|-(", llvm::Instruction::getOpcodeName(conditions.at(0).at(1)), " Instruction)",
-    //         " | Opcode: ", conditions.at(0).at(1),
-    //         " | Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
 }
 
 std::shared_ptr<SALAM::Instruction>
-createPHIInst(uint64_t id,
+createPHIInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Phi>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::Phi>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Phi::Phi(uint64_t id,
+Phi::Phi(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -3838,7 +3274,6 @@ void
 Phi::initialize(llvm::Value * irval,
                     irvmap * irmap,
                     SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     llvm::PHINode * phi = llvm::dyn_cast<llvm::PHINode>(irval);
     assert(phi);
@@ -3878,10 +3313,8 @@ Phi::runtimeInitialize() {
 
 void
 Phi::compute() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
-    DPRINTF(RuntimeCompute, "|| PHI entered from %s, using value: %s\n",
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| PHI entered from %s, using value: %s\n",
         previousBB->getIRStub(), operands.front().getIRString());
 
     setRegisterValue(operands.front().getOpRegister());
@@ -3910,34 +3343,23 @@ Phi::getStaticDependencies() const {
 // SALAM-Call // ------------------------------------------------------------//
 void // Debugging Interface
 Call::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createCallInst(uint64_t id,
+createCallInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Call>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::Call>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Call::Call(uint64_t id,
+Call::Call(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -3949,7 +3371,6 @@ void
 Call::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     callee = staticDependencies.back();
     staticDependencies.pop_back();
@@ -3964,34 +3385,23 @@ Call::compute() {
 // SALAM-Select // ----------------------------------------------------------//
 void // Debugging Interface
 Select::dumper() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     DPRINTF(SALAM_Debug, "| %s %s %s|\n\t\t %s %d \n\t\t %s %d \n\t\t %s %d %s \n",
-    //         "************** [", llvm::Instruction::getOpcodeName(conditions.at(0).at(1))  ,"] Instruction Dump **************",
-    //         "    UID: ", conditions.at(0).at(0),
-    //         " Opcode: ", conditions.at(0).at(1),
-    //         "Latency: ", conditions.at(0).at(2), " Cycles"
-    //     );
-    // }
+
 }
 
 std::shared_ptr<SALAM::Instruction>
-createSelectInst(uint64_t id,
+createSelectInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    return std::make_shared<SALAM::Select>(id, OpCode, cycles);
+              uint64_t cycles,
+              uint64_t fu) {
+    return std::make_shared<SALAM::Select>(id, owner, dbg, OpCode, cycles, fu);
 }
 
-Select::Select(uint64_t id,
+Select::Select(uint64_t id, gem5::SimObject * owner, bool dbg,
          uint64_t OpCode,
-              uint64_t cycles) :
-         Instruction(id, OpCode, cycles)
+              uint64_t cycles,
+              uint64_t fu) :
+         Instruction(id, owner, dbg, OpCode, cycles,fu)
 {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // if (DTRACE(SALAM_Debug)) {
-    //     this->dbgr = new Debugger();
-    // }
     std::vector<uint64_t> base_params;
     base_params.push_back(id);
     base_params.push_back(OpCode);
@@ -4003,7 +3413,6 @@ void
 Select::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     this->condition = getStaticDependencies(0);
     this->trueValue = getStaticDependencies(1);
@@ -4024,9 +3433,7 @@ Select::initialize(llvm::Value * irval,
 
 void
 Select::compute() {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
-    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++compute()\n");
-    DPRINTF(RuntimeCompute, "|| Computing %s\n", ir_string);
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Computing %s\n", ir_string);
 
     auto cond = operands.at(0);
     auto trueVal = operands.at(1);
@@ -4036,8 +3443,8 @@ Select::compute() {
     auto resultReg = (cond.getIntRegValue().isOneValue()) ? trueVal.getOpRegister() : falseVal.getOpRegister();
 #else
     auto resultReg = (cond.getUIntRegValue() == 1) ? trueVal.getOpRegister() : falseVal.getOpRegister();
-    DPRINTF(RuntimeCompute, "|| Selecting %s condition\n", (cond.getUIntRegValue() == 1) ? "TRUE" : "FALSE");
-    DPRINTF(RuntimeCompute, "|| %s = %s\n", ir_stub, (cond.getUIntRegValue() == 1) ? trueVal.getIRStub() : falseVal.getIRStub());
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Selecting %s condition\n", (cond.getUIntRegValue() == 1) ? "TRUE" : "FALSE");
+    if (dbg) DPRINTFS(RuntimeCompute, owner, "|| %s = %s\n", ir_stub, (cond.getUIntRegValue() == 1) ? trueVal.getIRStub() : falseVal.getIRStub());
 #endif
     setRegisterValue(resultReg);
 }

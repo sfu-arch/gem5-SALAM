@@ -47,12 +47,9 @@ class LLVMInterface : public ComputeUnit {
     std::string topName;
     uint32_t scheduling_threshold;
     int32_t clock_period;
-    int process_delay;
     int cycle;
     int stalls;
-    int loadInFlight;
-    int storeInFlight;
-    int compInFlight;
+
     bool running;
     bool loadOpScheduled;
     bool storeOpScheduled;
@@ -69,6 +66,7 @@ class LLVMInterface : public ComputeUnit {
     std::chrono::duration<float> schedulingTime;
     std::chrono::duration<float> queueProcessTime;
     std::chrono::duration<float> computeTime;
+    std::chrono::duration<float> hwTime;
     std::chrono::high_resolution_clock::time_point simStop;
     std::chrono::high_resolution_clock::time_point setupStop;
     std::chrono::high_resolution_clock::time_point timeStart;
@@ -77,7 +75,6 @@ class LLVMInterface : public ComputeUnit {
     class ActiveFunction {
       friend class LLVMInterface;
     private:
-        LLVMInterface * owner;
         HWInterface* hw;
         std::shared_ptr<SALAM::Function> func;
         std::shared_ptr<SALAM::Instruction> caller;
@@ -88,6 +85,7 @@ class LLVMInterface : public ComputeUnit {
         std::map<MemoryRequest *, uint64_t> writeQueueMap;
         std::map<uint64_t, std::shared_ptr<SALAM::Instruction>> computeQueue;
         std::shared_ptr<SALAM::BasicBlock> previousBB;
+        HW_Cycle_Stats hw_cycle_stats;
         uint32_t scheduling_threshold;
         bool returned = false;
         bool lockstep;
@@ -136,8 +134,7 @@ class LLVMInterface : public ComputeUnit {
           return (computeQueue.find(uid) != computeQueue.end());
         }
     public:
-
-
+        LLVMInterface * owner;
         ActiveFunction(LLVMInterface * _owner, std::shared_ptr<SALAM::Function> _func,
                        std::shared_ptr<SALAM::Instruction> _caller):
                        owner(_owner), func(_func), caller(_caller),
@@ -208,7 +205,7 @@ class LLVMInterface : public ComputeUnit {
     void readCommit(MemoryRequest *req);
     void writeCommit(MemoryRequest *req);
     void dumpModule(llvm::Module *m);
-    void printPerformanceResults();
+    void printResults();
     void launchFunction(std::shared_ptr<SALAM::Function> callee,
                         std::shared_ptr<SALAM::Instruction> caller);
     void launchTopFunction();
@@ -223,6 +220,7 @@ class LLVMInterface : public ComputeUnit {
     void addSchedulingTime(std::chrono::duration<float> timeDelta) { schedulingTime = schedulingTime + timeDelta; }
     void addQueueTime(std::chrono::duration<float> timeDelta) { queueProcessTime = queueProcessTime + timeDelta; }
     void addComputeTime(std::chrono::duration<float> timeDelta) { computeTime = computeTime + timeDelta; }
+    void addHWTime(std::chrono::duration<float> timeDelta) { hwTime = hwTime + timeDelta; }
 };
 
 #endif //__HWACC_LLVM_INTERFACE_HH__

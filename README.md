@@ -2,141 +2,31 @@
 
 gem5-SALAM (System Architecture for LLVM-based Accelerator Modeling), is a novel system architecture designed to enable LLVM-based modeling and simulation of custom hardware accelerators.
 
-Interactive Demo: https://youtu.be/nVlh0J89Qyw
-
-Presentation: https://youtu.be/IIl5TlbbfHE
-
 # Requirements
 
-**Please note that Ubuntu 20.04 is not currently supported**
-
 - gem5 dependencies
-- LLVM-3.8.1
+- LLVM-9 or newer
 - Frontend LLVM compiler for preferred development language (eg. clang for C)
 
 # gem5-SALAM Setup
 
-## Dependencies for gem5-SALAM
-
-### Required
-
-#### All Required Dependencies
+## All Required Dependencies for gem5-SALAM (Ubuntu 20.04)
 
 ```bash
-sudo apt install build-essential m4 scons python-dev libprotobuf-dev python-protobuf protobuf-compiler libgoogle-perftools-dev
-```
-
-#### GCC (The Compiler used)
-
-``` bash
-sudo apt install build-essential m4
-```
-
-#### SCons (Build Environment)
-
-```bash
-sudo apt install scons
-```
-
-#### Python 2 (Required Libraries)
-
-```bash
-sudo apt install python-dev
-```
-
-#### Protobuf (Used for trace playback and generation)
-
-```bash
-sudo apt-get install libprotobuf-dev python-protobuf protobuf-compiler libgoogle-perftools-dev
-```
-
-### Recommended
-
-#### Visualization
-
-gem5 offers the ability to create a system configuration diagram. In order to be able to create these when using gem5-SALAM, the following packages are required:
-
-- python-pydot
-- python-pydot-ng
-- graphviz
-
-The following command can be run in Ubuntu to install the required dependencies:
-
-``` bash
-sudo apt install python-pydot python-pydot-ng graphviz
-```
-
-#### ARM GCC Cross Compiler
-
-```bash
-sudo apt-get install gcc-arm-none-eabi
+sudo apt install build-essential git m4 scons zlib1g zlib1g-dev \
+    libprotobuf-dev protobuf-compiler libprotoc-dev libgoogle-perftools-dev \
+    python3-dev python-is-python3 libboost-all-dev pkg-config
 ```
 
 ## LLVM/Clang Setup 
 
-To build LLVM, you need to have CMake installed. If you don't already have it installed, you can easily install it from the Ubuntu repositories. 
-
+For a quick start, one can simply run the following to install LLVM and Clang on Ubuntu 20.04.
 ```bash
-sudo apt install cmake
+sudo apt install llvm-9 llvm-9-tools clang-9
 ```
+After installing these specific libraries, simply run the [update alternatives](https://github.com/TeCSAR-UNCC/gem5-SALAM/blob/main/docs/update-alternatives.sh) script in docs/.
 
-First, clone the LLVM source from github.
-
-```bash
-git clone https://github.com/llvm/llvm-project.git
-```
-
-Since we are going to be using LLVM 3.8.1, we want to checkout the LLVM 3.8.x branch. 
-
-```bash
-cd llvm-project/
-git checkout release/3.8.x
-```
-
-Copy clang into the LLVM tools directory so it is build with it
-
-```bash
-cp -r clang llvm/tools
-```
-
-Next, make your build directory
-
-```bash
-mkdir build
-cd build
-```
-
-Now that the build directory has been made, we can tell CMake to configure LLVM to be built with the options needed. 
-
-Below are some recommended CMake flags: 
-
-- DCMAKE_INSTALL_PREFIX: Changes your install directory to from /usr/local to a user defined value. This makes uninstalling and changing LLVM versions significantly easier.
-
-- DLLVM_ENABLE_ASSERTIONS: Enables code assertions, which helps with debugging
-
-- BUILD_SHARED_LIBS: Builds each LLVM component as a shared library. Helps reduce disk space used.
-
-```bash
-cmake -DCMAKE_INSTALL_PREFIX=<your_install_dir> -DBUILD_SHARED_LIBS=true - DLLVM_ENABLE_ASSERTIONS=true -G "Unix Makefiles" ../llvm
-```
-
-Now that the build environment is setup, you can go ahead and run make
-
-```bash
-make -j`nproc`
-```
-
-After the project is finished compiling, install the binaries to your defined directory. 
-
-```bash
-make install
-```
-
-Finally, update your alternatives to point to your compiled binaries. A script to do this has been provided. It currently assumes that the path to the binaries is /home/<username>/LLVM-3.8/
-
-```bash
-./update-alternatives.sh
-```
+Alternatively, you can install the latest version of LLVM via your system package manager or build from source found at https://github.com/llvm/llvm-project.
 
 # Building gem5-SALAM
 
@@ -146,7 +36,7 @@ Once you have successfully installed all of the necessary dependencies, you can 
 git clone https://github.com/TeCSAR-UNCC/gem5-SALAM
 ```
 
-When building gem5-SALAM, there are multiple different binary types that can be created. Just like in gem5 the options are debug, opt, fast, prof, and perf. 
+When building gem5-SALAM, there are multiple different binary types that can be created. Just like in gem5 the options are debug, opt, fast, prof, and perf. We recommend that users either use the opt or debug builds, as these are the build types we develop and test on.
 
 Below are the bash commands you would use to build the opt or debug binary. 
 

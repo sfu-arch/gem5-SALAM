@@ -12,6 +12,7 @@ if env['TARGET_ISA'] == 'arm':
     SimObject('StreamDma.py')
     SimObject('AccCluster.py')
     SimObject('StreamBuffer.py')
+    SimObject('RegisterBank.py')
 
     #LLVMInterface
     SimObject('ComputeUnit.py')
@@ -41,6 +42,7 @@ if env['TARGET_ISA'] == 'arm':
     Source('stream_buffer.cc')
     Source('stream_port.cc')
     Source('scratchpad_memory.cc')
+    Source('register_bank.cc')
     
     #
     Source('LLVMRead/src/value.cc')
@@ -50,8 +52,6 @@ if env['TARGET_ISA'] == 'arm':
     Source('LLVMRead/src/mem_request.cc')
     Source('LLVMRead/src/instruction.cc')
     Source('LLVMRead/src/registers.cc')
-    #Source('LLVMRead/src/base_instruction.cc')
-    #Source('LLVMRead/src/cycle_counts.cc')
     Source('LLVMRead/src/operand.cc')
 
     # GENERATED FILES
@@ -60,6 +60,7 @@ if env['TARGET_ISA'] == 'arm':
     # END OF GENERATED FILES
 
     Source('HWModeling/src/cycle_counts.cc')
+    #Source('HWModeling/src/cacti_wrapper.cc') 
     Source('HWModeling/src/functional_units.cc')
     Source('HWModeling/src/hw_interface.cc')
     Source('HWModeling/src/hw_statistics.cc')
@@ -74,6 +75,7 @@ if env['TARGET_ISA'] == 'arm':
     DebugFlag('DeviceMMR')
     DebugFlag('LLVMInterface')
     DebugFlag('NoncoherentDma')
+    DebugFlag('LLVMParse')
     DebugFlag('Runtime')
     DebugFlag('RuntimeCompute')
     DebugFlag('RuntimeQueues')

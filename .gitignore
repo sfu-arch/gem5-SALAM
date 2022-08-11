@@ -40,3 +40,4 @@ BM_ARM_OUT
 /benchmarks/ARM
 1.txt
 2.txt
+build.sh

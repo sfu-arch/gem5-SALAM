@@ -30,7 +30,6 @@ class Instruction : public Value
         uint64_t llvmOpCode;
         uint64_t cycleCount;
         uint64_t currentCycle;
-        bool dbg = false;
         uint64_t functional_unit = 0;
         HWInterface* hw_interface;
     protected:
@@ -52,10 +51,10 @@ class Instruction : public Value
         bool isready = false;
     public:
         bool to_be_removed = false;
-
-        Instruction(uint64_t id); //
-        Instruction(uint64_t id, uint64_t OpCode); //
-        Instruction(uint64_t id, uint64_t OpCode, uint64_t cycles); //
+        Instruction(uint64_t id, gem5::SimObject * owner, bool dbg); //
+        Instruction(uint64_t id, gem5::SimObject * owner, bool dbg, uint64_t OpCode); //
+        Instruction(uint64_t id, gem5::SimObject * owner, bool dbg, uint64_t OpCode, uint64_t cycles); //
+        Instruction(uint64_t id, gem5::SimObject * owner, bool dbg, uint64_t OpCode, uint64_t cycles, uint64_t functional_unit); //
         ~Instruction(); //
         bool operator == (const std::shared_ptr<SALAM::Instruction> inst) const { return this->getUID() == inst->getUID(); }
         bool operator != (const std::shared_ptr<SALAM::Instruction> inst) const { return !operator==(inst); }
@@ -63,7 +62,7 @@ class Instruction : public Value
         virtual std::shared_ptr<SALAM::BasicBlock> getTarget()  { return nullptr; }
         uint64_t getDependencyCount() { return dynamicDependencies.size(); }
         virtual uint64_t getCycleCount() { return cycleCount; }
-        uint64_t getOpode() { return llvmOpCode; }
+        virtual uint64_t getOpode() { return llvmOpCode; }
         uint64_t getCurrentCycle() { return currentCycle; }
         virtual valueListTy getStaticDependencies() const { return staticDependencies; }
         std::map<uint64_t, std::shared_ptr<SALAM::Instruction>> getDynamicDependencies() const { return dynamicDependencies; }
@@ -78,11 +77,12 @@ class Instruction : public Value
         void addRuntimeUser(std::shared_ptr<SALAM::Instruction> dep) { dynamicUsers.push_back(dep); }
         void signalUsers();
         bool isCommitted() { return committed; }
-        bool hasFunctionalUnit() { return (functional_unit != 0); }
+        //bool hasFunctionalUnit() { return (functional_unit != 0); }
+        bool hasFunctionalUnit() { return false; }
         bool debug() { return dbg; }
         void linkOperands(const SALAM::Operand &newOp);
         std::vector<SALAM::Operand> * getOperands() { return &operands; }
-        virtual uint64_t getFunctionalUnit() { }
+        uint64_t getFunctionalUnit() { return functional_unit; }
         virtual bool isReturn() { return false; }
         virtual bool isTerminator() { return false; }
         virtual bool isPhi() { return false; }
@@ -125,9 +125,10 @@ class BadInstruction : public Instruction {
 
     protected:
     public:
-        BadInstruction(uint64_t id,
+        BadInstruction(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~BadInstruction() = default;
         void initialize (llvm::Value * irval,
                 irvmap * irmap,
@@ -147,9 +148,10 @@ class BadInstruction : public Instruction {
 
 
 std::shared_ptr<SALAM::Instruction>
-createBadInst(uint64_t id,
+createBadInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 
 
 //---------------------------------------------------------------------------//
@@ -167,9 +169,10 @@ class Ret : public Instruction {
 
     protected:
     public:
-        Ret(uint64_t id,
+        Ret(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Ret() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -184,9 +187,10 @@ class Ret : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createRetInst(uint64_t id,
+createRetInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 
 // SALAM-Br // --------------------------------------------------------------//
 
@@ -206,9 +210,10 @@ class Br : public Instruction {
     protected:
     public:
         // Branch Constructor
-        Br(uint64_t id,
+        Br(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Br() = default;
         void initialize(llvm::Value * irval,
                         irvmap * irmap,
@@ -229,9 +234,10 @@ class Br : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createBrInst(uint64_t id,
+createBrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 
 // SALAM-Switch // ----------------------------------------------------------//
 typedef std::pair<std::shared_ptr<SALAM::Value>, std::shared_ptr<SALAM::BasicBlock>> caseArgs;
@@ -249,9 +255,10 @@ class Switch : public Instruction {
         std::shared_ptr<SALAM::BasicBlock> defaultDestination;
     protected:
     public:
-        Switch(uint64_t id,
+        Switch(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Switch() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -269,9 +276,10 @@ class Switch : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createSwitchInst(uint64_t id,
+createSwitchInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 //---------------------------------------------------------------------------//
 //--------- Binary Operator Instructions ------------------------------------//
 //---------------------------------------------------------------------------//
@@ -288,9 +296,10 @@ class Add : public Instruction
 
     protected:
     public:
-        Add(uint64_t id,
+        Add(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Add() = default;
         void initialize(llvm::Value *irval,
                         SALAM::irvmap *irmap,
@@ -304,9 +313,10 @@ class Add : public Instruction
 };
 
 std::shared_ptr<SALAM::Instruction>
-createAddInst(uint64_t id,
+createAddInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 
 // SALAM-FAdd // ------------------------------------------------------------//
 
@@ -319,9 +329,10 @@ class FAdd : public Instruction {
 
     protected:
     public:
-        FAdd(uint64_t id,
+        FAdd(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~FAdd() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -335,9 +346,10 @@ class FAdd : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createFAddInst(uint64_t id,
+createFAddInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-Sub // -------------------------------------------------------------//
 
 class Sub : public Instruction {
@@ -349,9 +361,10 @@ class Sub : public Instruction {
 
     protected:
     public:
-        Sub(uint64_t id,
+        Sub(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Sub() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -365,9 +378,10 @@ class Sub : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createSubInst(uint64_t id,
+createSubInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-FSub // -------------------------------------------------------------//
 
 class FSub : public Instruction {
@@ -379,9 +393,10 @@ class FSub : public Instruction {
 
     protected:
     public:
-        FSub(uint64_t id,
+        FSub(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~FSub() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -395,9 +410,10 @@ class FSub : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createFSubInst(uint64_t id,
+createFSubInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-Mul // -------------------------------------------------------------//
 
 class Mul : public Instruction {
@@ -410,9 +426,10 @@ class Mul : public Instruction {
 
     protected:
     public:
-        Mul(uint64_t id,
+        Mul(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Mul() = default;
         void initialize (llvm::Value * irval,
                         SALAM::irvmap * irmap,
@@ -426,9 +443,10 @@ class Mul : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createMulInst(uint64_t id,
+createMulInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-FMul // ------------------------------------------------------------//
 
 class FMul : public Instruction {
@@ -440,9 +458,10 @@ class FMul : public Instruction {
 
     protected:
     public:
-        FMul(uint64_t id,
+        FMul(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~FMul() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -456,9 +475,10 @@ class FMul : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createFMulInst(uint64_t id,
+createFMulInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-UDiv // ------------------------------------------------------------//
 
 class UDiv : public Instruction {
@@ -470,9 +490,10 @@ class UDiv : public Instruction {
 
     protected:
     public:
-        UDiv(uint64_t id,
+        UDiv(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~UDiv() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -486,9 +507,10 @@ class UDiv : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createUDivInst(uint64_t id,
+createUDivInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-SDiv // ------------------------------------------------------------//
 
 class SDiv : public Instruction {
@@ -500,9 +522,10 @@ class SDiv : public Instruction {
 
     protected:
     public:
-        SDiv(uint64_t id,
+        SDiv(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~SDiv() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -516,9 +539,10 @@ class SDiv : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createSDivInst(uint64_t id,
+createSDivInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-FDiv // ------------------------------------------------------------//
 
 class FDiv : public Instruction {
@@ -530,9 +554,10 @@ class FDiv : public Instruction {
 
     protected:
     public:
-        FDiv(uint64_t id,
+        FDiv(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~FDiv() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -546,9 +571,10 @@ class FDiv : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createFDivInst(uint64_t id,
+createFDivInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-URem // ------------------------------------------------------------//
 
 class URem : public Instruction {
@@ -560,9 +586,10 @@ class URem : public Instruction {
 
     protected:
     public:
-        URem(uint64_t id,
+        URem(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~URem() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -576,9 +603,10 @@ class URem : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createURemInst(uint64_t id,
+createURemInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-SRem // ------------------------------------------------------------//
 
 class SRem : public Instruction {
@@ -590,9 +618,10 @@ class SRem : public Instruction {
 
     protected:
     public:
-        SRem(uint64_t id,
+        SRem(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~SRem() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -606,9 +635,10 @@ class SRem : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createSRemInst(uint64_t id,
+createSRemInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-FRem // ------------------------------------------------------------//
 
 class FRem : public Instruction {
@@ -620,9 +650,10 @@ class FRem : public Instruction {
 
     protected:
     public:
-        FRem(uint64_t id,
+        FRem(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~FRem() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -636,9 +667,10 @@ class FRem : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createFRemInst(uint64_t id,
+createFRemInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 //---------------------------------------------------------------------------//
 //--------- Bitwise Binary Operator Instructions ----------------------------//
 //---------------------------------------------------------------------------//
@@ -654,9 +686,10 @@ class Shl : public Instruction {
 
     protected:
     public:
-        Shl(uint64_t id,
+        Shl(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Shl() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -670,9 +703,10 @@ class Shl : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createShlInst(uint64_t id,
+createShlInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-LShr // ------------------------------------------------------------//
 
 class LShr : public Instruction {
@@ -684,9 +718,10 @@ class LShr : public Instruction {
 
     protected:
     public:
-        LShr(uint64_t id,
+        LShr(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~LShr() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -700,9 +735,10 @@ class LShr : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createLShrInst(uint64_t id,
+createLShrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-AShr // ------------------------------------------------------------//
 
 class AShr : public Instruction {
@@ -714,9 +750,10 @@ class AShr : public Instruction {
 
     protected:
     public:
-        AShr(uint64_t id,
+        AShr(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~AShr() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -730,9 +767,10 @@ class AShr : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createAShrInst(uint64_t id,
+createAShrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-And // -------------------------------------------------------------//
 
 class And : public Instruction {
@@ -744,9 +782,10 @@ class And : public Instruction {
 
     protected:
     public:
-        And(uint64_t id,
+        And(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~And() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -760,9 +799,10 @@ class And : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createAndInst(uint64_t id,
+createAndInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-Or // --------------------------------------------------------------//
 
 class Or : public Instruction {
@@ -774,9 +814,10 @@ class Or : public Instruction {
     protected:
 
     public:
-        Or(uint64_t id,
+        Or(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Or() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -790,9 +831,10 @@ class Or : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createOrInst(uint64_t id,
+createOrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-Xor // -------------------------------------------------------------//
 
 class Xor : public Instruction {
@@ -804,9 +846,10 @@ class Xor : public Instruction {
 
     protected:
     public:
-        Xor(uint64_t id,
+        Xor(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Xor() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -820,9 +863,10 @@ class Xor : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createXorInst(uint64_t id,
+createXorInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 //---------------------------------------------------------------------------//
 //--------- Memory Instructions ---------------------------------------------//
 //---------------------------------------------------------------------------//
@@ -840,9 +884,10 @@ class Load : public Instruction {
 
     protected:
     public:
-        Load(uint64_t id,
+        Load(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Load() = default;
         void initialize(llvm::Value * irval,
                         irvmap * irmap,
@@ -866,9 +911,10 @@ class Load : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createLoadInst(uint64_t id,
+createLoadInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-Store // -----------------------------------------------------------//
 
 class Store : public Instruction {
@@ -881,9 +927,10 @@ class Store : public Instruction {
 
     protected:
     public:
-        Store (uint64_t id,
+        Store (uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Store() = default;
         void initialize(llvm::Value * irval,
                         irvmap * irmap,
@@ -905,9 +952,10 @@ class Store : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createStoreInst(uint64_t id,
+createStoreInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-GEP // -------------------------------------------------------------//
 
 /*
@@ -929,9 +977,10 @@ class GetElementPtr : public Instruction {
     protected:
 
     public:
-        GetElementPtr(uint64_t id,
+        GetElementPtr(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~GetElementPtr() = default;
         void initialize(llvm::Value * irval,
                         irvmap * irmap,
@@ -948,9 +997,10 @@ class GetElementPtr : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createGetElementPtrInst(uint64_t id,
+createGetElementPtrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 //---------------------------------------------------------------------------//
 //--------- Other / Cast Instructions ---------------------------------------//
 //---------------------------------------------------------------------------//
@@ -966,9 +1016,10 @@ class Trunc : public Instruction {
 
     protected:
     public:
-        Trunc(uint64_t id,
+        Trunc(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Trunc() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -982,9 +1033,10 @@ class Trunc : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createTruncInst(uint64_t id,
+createTruncInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-ZExt // ------------------------------------------------------------//
 
 class ZExt : public Instruction {
@@ -996,9 +1048,10 @@ class ZExt : public Instruction {
 
     protected:
     public:
-        ZExt(uint64_t id,
+        ZExt(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~ZExt() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1012,9 +1065,10 @@ class ZExt : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createZExtInst(uint64_t id,
+createZExtInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-SExt // ------------------------------------------------------------//
 
 class SExt : public Instruction {
@@ -1026,9 +1080,10 @@ class SExt : public Instruction {
 
     protected:
     public:
-        SExt(uint64_t id,
+        SExt(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~SExt() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1042,9 +1097,10 @@ class SExt : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createSExtInst(uint64_t id,
+createSExtInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-FPToUI // ----------------------------------------------------------//
 class FPToUI;
 void initializeFPToUIInst(SALAM::FPToUI &salamInstruction);
@@ -1058,9 +1114,10 @@ class FPToUI : public Instruction {
 
     protected:
     public:
-        FPToUI(uint64_t id,
+        FPToUI(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~FPToUI() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1074,9 +1131,10 @@ class FPToUI : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createFPToUIInst(uint64_t id,
+createFPToUIInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-FPToSI // ----------------------------------------------------------//
 
 class FPToSI : public Instruction {
@@ -1089,9 +1147,10 @@ class FPToSI : public Instruction {
     protected:
 
     public:
-        FPToSI(uint64_t id,
+        FPToSI(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~FPToSI() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1105,9 +1164,10 @@ class FPToSI : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createFPToSIInst(uint64_t id,
+createFPToSIInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-UIToFP // ----------------------------------------------------------//
 
 class UIToFP : public Instruction {
@@ -1119,9 +1179,10 @@ class UIToFP : public Instruction {
 
     protected:
     public:
-        UIToFP(uint64_t id,
+        UIToFP(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~UIToFP() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1135,9 +1196,10 @@ class UIToFP : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createUIToFPInst(uint64_t id,
+createUIToFPInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-SIToFP // ----------------------------------------------------------//
 
 class SIToFP : public Instruction {
@@ -1149,9 +1211,10 @@ class SIToFP : public Instruction {
 
     protected:
     public:
-        SIToFP(uint64_t id,
+        SIToFP(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~SIToFP() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1165,9 +1228,10 @@ class SIToFP : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createSIToFPInst(uint64_t id,
+createSIToFPInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-FPTrunc // ---------------------------------------------------------//
 
 class FPTrunc : public Instruction {
@@ -1179,9 +1243,10 @@ class FPTrunc : public Instruction {
 
     protected:
     public:
-        FPTrunc(uint64_t id,
+        FPTrunc(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~FPTrunc() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1195,9 +1260,10 @@ class FPTrunc : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createFPTruncInst(uint64_t id,
+createFPTruncInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-FPExt // -----------------------------------------------------------//
 
 class FPExt : public Instruction {
@@ -1209,9 +1275,10 @@ class FPExt : public Instruction {
 
     protected:
     public:
-        FPExt(uint64_t id,
+        FPExt(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~FPExt() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1225,9 +1292,10 @@ class FPExt : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createFPExtInst(uint64_t id,
+createFPExtInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-PtrToInt // --------------------------------------------------------//
 
 class PtrToInt : public Instruction {
@@ -1240,9 +1308,10 @@ class PtrToInt : public Instruction {
     protected:
 
     public:
-        PtrToInt (uint64_t id,
+        PtrToInt (uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~PtrToInt() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1256,9 +1325,10 @@ class PtrToInt : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createPtrToIntInst(uint64_t id,
+createPtrToIntInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-IntToPtr // --------------------------------------------------------//
 
 class IntToPtr : public Instruction {
@@ -1270,9 +1340,10 @@ class IntToPtr : public Instruction {
 
     protected:
     public:
-        IntToPtr(uint64_t id,
+        IntToPtr(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~IntToPtr() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1286,9 +1357,10 @@ class IntToPtr : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createIntToPtrInst(uint64_t id,
+createIntToPtrInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 
 class BitCast : public Instruction {
     private:
@@ -1299,9 +1371,10 @@ class BitCast : public Instruction {
 
     protected:
     public:
-        BitCast(uint64_t id,
+        BitCast(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~BitCast() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1315,9 +1388,10 @@ class BitCast : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createBitCastInst(uint64_t id,
+createBitCastInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 
 //---------------------------------------------------------------------------//
 //--------- Other / Comparison Instructions ---------------------------------//
@@ -1336,9 +1410,10 @@ class ICmp : public Instruction {
     protected:
 
     public:
-        ICmp(uint64_t id,
+        ICmp(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~ICmp() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1352,9 +1427,10 @@ class ICmp : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createICmpInst(uint64_t id,
+createICmpInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-FCmp // ------------------------------------------------------------//
 
 class FCmp : public Instruction {
@@ -1368,9 +1444,10 @@ class FCmp : public Instruction {
     protected:
 
     public:
-        FCmp(uint64_t id,
+        FCmp(uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~FCmp() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1384,9 +1461,10 @@ class FCmp : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createFCmpInst(uint64_t id,
+createFCmpInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 //---------------------------------------------------------------------------//
 //--------- Other / Edge Instructions ---------------------------------------//
 //---------------------------------------------------------------------------//
@@ -1410,9 +1488,10 @@ class Phi : public Instruction {
     protected:
 
     public:
-        Phi (uint64_t id,
+        Phi (uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Phi() = default;
         void initialize(llvm::Value * irval,
                         irvmap * irmap,
@@ -1431,9 +1510,10 @@ class Phi : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createPHIInst(uint64_t id,
+createPHIInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-Call // ------------------------------------------------------------//
 
 class Call : public Instruction {
@@ -1445,9 +1525,10 @@ class Call : public Instruction {
         std::shared_ptr<SALAM::Value> callee;
     protected:
     public:
-        Call (uint64_t id,
+        Call (uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Call() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1463,9 +1544,10 @@ class Call : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createCallInst(uint64_t id,
+createCallInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 // SALAM-Select // ----------------------------------------------------------//
 
 class Select : public Instruction {
@@ -1481,9 +1563,10 @@ class Select : public Instruction {
     protected:
     public:
         // ---- Constructor
-        Select (uint64_t id,
+        Select (uint64_t id, gem5::SimObject * owner, bool dbg,
             uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
         ~Select() = default;
         void initialize (llvm::Value * irval,
                         irvmap * irmap,
@@ -1499,9 +1582,10 @@ class Select : public Instruction {
 };
 
 std::shared_ptr<SALAM::Instruction>
-createSelectInst(uint64_t id,
+createSelectInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
-              uint64_t cycles);
+              uint64_t cycles,
+              uint64_t fu);
 //---------------------------------------------------------------------------//
 //--------- End Instruction Classes -----------------------------------------//
 //---------------------------------------------------------------------------//
