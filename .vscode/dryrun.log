@@ -1,0 +1,6 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/local-scratch/localhome/mha157/new_new_salam/gem5-SALAM'
+make: Leaving directory '/local-scratch/localhome/mha157/new_new_salam/gem5-SALAM'
+ 
+make: *** No targets specified and no makefile found.  Stop.
+
