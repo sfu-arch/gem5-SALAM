@@ -29,6 +29,8 @@ SALAM::Value::Value(const Value &copy_val)
     reading_value_from_map = copy_val.reading_value_from_map;
     is_unwrap = copy_val.is_unwrap;
 
+    owner = copy_val.owner;
+    dbg = copy_val.dbg;
 }
 
 SALAM::Value::Value(std::shared_ptr<SALAM::Value> copy_val)
@@ -277,6 +279,8 @@ SALAM::Value::setRegisterValue(uint8_t * data) {
         {
             if (dbg) DPRINTFS(Runtime, owner, "Pointer\n");
             returnReg->writePtrData(*(uint64_t *)data, ptr_size);
+            if (dbg) DPRINTFS(Runtime, owner, "Pointer\n");
+            // returnReg->writePtrData(*(uint64_t *)data);
             break;
         }
         default:

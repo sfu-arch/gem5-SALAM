@@ -294,6 +294,7 @@ LLVMInterface::ActiveFunction::processQueues()
         if (caller != nullptr) {
             // Signal the calling instruction
             if (caller->getSize() > 0) {
+                // std::cerr << "Returning from function: " << func->getIRStub() << std::endl;
                 auto retInst = reservation.front();
                 auto retOperand = retInst->getOperands()->front();
                 caller->setRegisterValue(retOperand.getOpRegister());
@@ -452,7 +453,7 @@ LLVMInterface::ActiveFunction::processQueues()
                         if (!(inst)->launch()) {
             handleInstLog(queue_iter->get(), 16);
 
-                            if (dbg) DPRINTFS(Runtime, owner,  "\t\t  | Added to Compute Queue: %s - UID[%i]\n", llvm::Instruction::getOpcodeName((inst)->getOpode()), (inst)->getUID());
+                            DPRINTFR(Runtime, "\t\t  | Added to Compute Queue: %s - UID[%i]\n", llvm::Instruction::getOpcodeName((inst)->getOpode()), (inst)->getUID());
                             computeQueue.insert({(inst)->getUID(), inst});
                             hw_cycle_stats.compLaunched++;
                         }
@@ -737,7 +738,6 @@ LLVMInterface::constructStaticGraph() {
  Parses LLVM file and creates the CDFG passed to our runtime simulation engine.
 *********************************************************************************************/
     auto parseStart = std::chrono::high_resolution_clock::now();
-
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     if (dbg) DPRINTF(LLVMInterface, "Constructing Static Dependency Graph\n");
 

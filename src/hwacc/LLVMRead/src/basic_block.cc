@@ -69,6 +69,6 @@ SALAM::BasicBlock::initialize(llvm::Value * irval, irvmap *vmap, SALAM::valueLis
             continue;
         }
 
-        if (dbg) DPRINTFS(LLVMInterface, owner, "Instruction (UID: %d) Initialization Complete\n", instruct->getUID());
+        if (dbg) DPRINTFS(LLVMParse, owner, "Instruction (UID: %d) Initialization Complete\n", instruct->getUID());
     }
 }

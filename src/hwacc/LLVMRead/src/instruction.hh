@@ -51,6 +51,7 @@ class Instruction : public Value
         bool committed = false;
         bool isready = false;
     public:
+        bool to_be_removed = false;
         Instruction(uint64_t id, gem5::SimObject * owner, bool dbg); //
         Instruction(uint64_t id, gem5::SimObject * owner, bool dbg, uint64_t OpCode); //
         Instruction(uint64_t id, gem5::SimObject * owner, bool dbg, uint64_t OpCode, uint64_t cycles); //

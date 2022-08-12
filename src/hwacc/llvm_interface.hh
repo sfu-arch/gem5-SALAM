@@ -75,7 +75,6 @@ class LLVMInterface : public ComputeUnit {
     class ActiveFunction {
       friend class LLVMInterface;
     private:
-        LLVMInterface * owner;
         HWInterface* hw;
         std::shared_ptr<SALAM::Function> func;
         std::shared_ptr<SALAM::Instruction> caller;
@@ -135,8 +134,7 @@ class LLVMInterface : public ComputeUnit {
           return (computeQueue.find(uid) != computeQueue.end());
         }
     public:
-
-
+        LLVMInterface * owner;
         ActiveFunction(LLVMInterface * _owner, std::shared_ptr<SALAM::Function> _func,
                        std::shared_ptr<SALAM::Instruction> _caller):
                        owner(_owner), func(_func), caller(_caller),

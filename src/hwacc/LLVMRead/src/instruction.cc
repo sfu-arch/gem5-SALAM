@@ -215,13 +215,15 @@ SALAM::Instruction::launch()
 bool
 SALAM::Instruction::commit()
 {
-    if (dbg) DPRINTFS(Runtime, owner, "||  Current Cycle: %i\n", getCurrentCycle());
-    if (isLoad()) {
+    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
+    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++commit()\n");
+    DPRINTF(Runtime, "||  Current Cycle: %i\n", getCurrentCycle());
+    if (isLoad() && is_read) {
         // std::cerr << "Commiting " << getIRString() << " -> " << getUID() << "\n";
-        if (is_read)
-            std::cerr << "is_read " << "\n";
+        std::cerr << "is_read " << "\n";
     }
-    if (getCurrentCycle() == getCycleCount() || is_read) { // Instruction ready to be committed
+    if (dbg) DPRINTFS(Runtime, owner, "||  Current Cycle: %i\n", getCurrentCycle());
+    if (getCurrentCycle() == getCycleCount()) { // Instruction ready to be committed
         signalUsers();
         committed = true;
         if (dbg) DPRINTFS(Runtime, owner, "||==Return: %s\n", committed ? "true" : "false");
@@ -2896,7 +2898,6 @@ void
 BitCast::initialize(llvm::Value * irval,
                 irvmap * irmap,
                 SALAM::valueListTy * valueList) {
-    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
     SALAM::Instruction::initialize(irval, irmap, valueList);
     // ****** //
 }
