@@ -11,7 +11,7 @@ acc_cluster:
   - Accelerator:
     - Name: Top
       IrPath: benchmarks/sys_validation/bfs/hw/top.ll
-      ConfigPath: benchmarks/sys_validation/bfs/hw/top.ini
+      ConfigPath: benchmarks/sys_validation/bfs/config.yml
       PIOSize: 37
       InterruptNum: 68
       PIOMaster: LocalBus
@@ -21,7 +21,7 @@ acc_cluster:
   - Accelerator:
     - Name: bfs
       IrPath: benchmarks/sys_validation/bfs/hw/bfs.ll
-      ConfigPath: benchmarks/sys_validation/bfs/hw/bfs.ini
+      ConfigPath: benchmarks/sys_validation/bfs/config.yml
       Debug: False
       PIOSize: 5
       PIOMaster: LocalBus
@@ -57,7 +57,7 @@ hw_config:
         functional_unit: 1
         functional_unit_limit: 0
         opcode_num: 13
-        runtime_cycles: 1
+        runtime_cycles: 100
       addrspacecast:
         functional_unit: 0
         functional_unit_limit: 0

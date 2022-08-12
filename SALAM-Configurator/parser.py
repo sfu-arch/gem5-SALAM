@@ -162,10 +162,6 @@ class AccCluster:
         lines.append("")
 
         return lines
-<<<<<<< HEAD
->>>>>>> Refactored configurator
-=======
->>>>>>> c1f3e3d43d9c3a7f06d1436298c79782c6b14d55
 
 class Accelerator:
 

@@ -1,4 +1,3 @@
-from distutils.command.config import config
 import m5
 from m5.objects import *
 from m5.util import *
@@ -32,6 +31,31 @@ def AccConfig(acc, bench_file, config_file):
     acc.hw_interface = HWInterface()
     # Define HW Counts
     acc.hw_interface.cycle_counts = CycleCounts()
+    #acc.hw_interface.cycle_counts
+    
+    if benchPath[m5PathLen+1] == 'mobilenetv2':
+        fu_yaml = open(config_file, 'r')
+        for yaml_inst_list in yaml.safe_load_all(fu_yaml):
+            document = yaml_inst_list['acc_cluster']
+            current_acc = document[0]['Name'] + '_' + benchname 
+            if(benchPath[9] == document[0]['Name']):
+                print(current_acc + " Profile Loaded")
+                inst_list = yaml_inst_list['hw_config'][current_acc]['instructions'].keys()
+                for instruction in inst_list:
+                    setattr(acc.hw_interface.cycle_counts, instruction, yaml_inst_list['hw_config'][current_acc]['instructions'][instruction]['runtime_cycles'])
+        fu_yaml.close()
+    
+    else:
+        fu_yaml = open(config_file, 'r')
+        yaml_inst_list = yaml.safe_load(fu_yaml)
+        if yaml_inst_list['hw_config'][benchname] is not None:
+            inst_list = yaml_inst_list['hw_config'][benchname]['instructions'].keys()
+            for instruction in inst_list:
+                setattr(acc.hw_interface.cycle_counts, instruction, yaml_inst_list['hw_config'][benchname]['instructions'][instruction]['runtime_cycles'])
+        fu_yaml.close()
+
+    #TODO Automate the generation of the list below
+    # Functional Units
     acc.hw_interface.functional_units = FunctionalUnits()
     acc.hw_interface.functional_units.double_multiplier = DoubleMultiplier() 
     acc.hw_interface.functional_units.bit_register = BitRegister()
