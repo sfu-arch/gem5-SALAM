@@ -18,7 +18,8 @@ SALAM::Function::initialize(llvm::Value * irval,
 
 	//Parse irval for function params
 	llvm::Function * func = llvm::dyn_cast<llvm::Function>(irval);
-	assert(func); //panic("Invalid llvm::Value type used to initialize function. Failed cast to llvm::Function.");
+    return_type = func->getReturnType();
+    assert(func); //panic("Invalid llvm::Value type used to initialize function. Failed cast to llvm::Function.");
     if (func->getName() == topName) top = true;
     else top = false;
 	// Fill arguments

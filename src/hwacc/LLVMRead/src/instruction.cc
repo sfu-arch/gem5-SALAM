@@ -1,6 +1,7 @@
 #include "instruction.hh"
 #include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/IR/DataLayout.h"
+#include "../../bin_hierarchy.hh"
 #include "sim/sim_object.hh"
 
 #include <cmath>
@@ -61,7 +62,15 @@ void
 SALAM::Instruction::Instruction_Debugger::dumper(Instruction *inst)
 {
 }
-
+bool isMalloc(llvm::Value *val)
+{
+    if (llvm::isa<llvm::Instruction>(val)) {
+        if (!(llvm::dyn_cast<llvm::Instruction>(val))->getParent()->getParent()->getName().contains("diff"))
+            return false;
+    }
+    return val->getNameOrAsOperand().find("malloc") != std::string::npos;
+}
+long int malloc_start_address = 0;
 void
 SALAM::Instruction::initialize(llvm::Value *irval,
                          irvmap *irmap,
@@ -75,17 +84,42 @@ SALAM::Instruction::initialize(llvm::Value *irval,
     assert(iruser);
     assert(inst);
     uint64_t phiBB = 0;
-    for (auto const op : iruser->operand_values()) {
+    for (auto op : iruser->operand_values()) {
         auto mapit = irmap->find(op);
+        if(dbg) {
+            std::cerr << "| Operand Found: ";
+            op->printAsOperand(llvm::errs());
+            llvm::errs() << "\n";
+        }
         std::shared_ptr<SALAM::Value> opval;
         if(mapit == irmap->end()) {
+            auto op1 = op;
+            if (!llvm::dyn_cast<llvm::ConstantData>(op) && !llvm::dyn_cast<llvm::ConstantExpr>(op)) {
+                llvm::errs() << "| Operand Not Found: " << *irval << " -> " << op->getName() << " type: " << *op->getType() << "\n";
+                if (isMalloc(op)) {
+                    llvm::errs() << "| Operand is a malloc. Will not handle it as a constant\n";
+                    return;
+                } else if (!op->getType()->isVoidTy() && !(llvm::isa<llvm::Function>(op) && llvm::dyn_cast<llvm::Function>(op)->getReturnType()->isVoidTy())) {
+                        op1 = llvm::Constant::getNullValue(llvm::dyn_cast<llvm::Function>(op)->getReturnType());
+                        llvm::errs() << "getting Null value\n";
+                } else {
+                    // llvm::dyn_cast<llvm::Instruction>(irval)->removeFromParent();
+                    to_be_removed = true;
+                    return;
+                }
+            }
+
+            if (llvm::isa<llvm::Function>(op) || llvm::isa<llvm::CallInst>(op)) {
+                llvm::errs() << "call : " << *op << "\n";
+            }
+
             // TODO: Handle constant data and constant expressions
             if (dbg) DPRINTFS(LLVMParse, owner, "Instantiate Operand as Constant Data/Expression\n");
             uint64_t id = valueList->back()->getUID() + 1;
             std::shared_ptr<SALAM::Constant> con = std::make_shared<SALAM::Constant>(id, owner, dbg);
             valueList->push_back(con);
             irmap->insert(SALAM::irvmaptype(op, con));
-            con->initialize(op, irmap, valueList);
+            con->initialize(op1, irmap, valueList);
             opval = con;
         } else {
             if (dbg) DPRINTFS(LLVMParse, owner, "Instantiate Operands on Value List\n");
@@ -158,11 +192,20 @@ SALAM::Instruction::launch()
     launched = true;
     if (getCycleCount() == 0) { // Instruction ready to be committed
         if (dbg) DPRINTFS(Runtime, owner, "||  0 Cycle Instruction\n");
-        compute();
+        if (!reading_value_from_map)
+            compute();
+        else
+            llvm::errs() << "Reading value of " << getIRStub() << " from map\n";
+        // compute();
         commit();
     } else {
         currentCycle++;
-        compute();
+        if (!reading_value_from_map)
+            compute();
+        else
+            llvm::errs() << "Reading value of " << getIRStub() << " from map\n";
+
+        // compute();
     }
     if (dbg) DPRINTFS(Runtime, owner, "||==Return: %s\n", isCommitted() ? "true" : "false");
     if (dbg) DPRINTFS(Runtime, owner, "||==launch================\n");
@@ -172,6 +215,13 @@ SALAM::Instruction::launch()
 bool
 SALAM::Instruction::commit()
 {
+    // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
+    // else if(DTRACE(SALAM_Debug)) DPRINTF(Runtime, "||++commit()\n");
+    DPRINTF(Runtime, "||  Current Cycle: %i\n", getCurrentCycle());
+    if (isLoad() && is_read) {
+        // std::cerr << "Commiting " << getIRString() << " -> " << getUID() << "\n";
+        std::cerr << "is_read " << "\n";
+    }
     if (dbg) DPRINTFS(Runtime, owner, "||  Current Cycle: %i\n", getCurrentCycle());
     if (getCurrentCycle() == getCycleCount()) { // Instruction ready to be committed
         signalUsers();
@@ -230,20 +280,31 @@ SALAM::Instruction::linkOperands(const SALAM::Operand &newOp)
 //std::deque<uint64_t>
 std::vector<uint64_t>
 SALAM::Instruction::runtimeInitialize() {
+    // std::cerr << "Here 0-0" << std::endl;
+
     assert(getDependencyCount() == 0);
+    // std::cerr << "Here 0-1" << std::endl;
+
     //std::deque<uint64_t> dep_uids;
     std::vector<uint64_t> dep_uids;
 
     for (auto it = staticDependencies.begin(); it != staticDependencies.end(); ++it) {
+        // std::cerr << "Here 0-2" << std::endl;
+
         std::shared_ptr<SALAM::Value> static_dependency = *it;
+        // std::cerr << "static dep " << static_dependency->getIRString() << std::endl;
         auto dep_uid = static_dependency->getUID();
         operands.push_back(SALAM::Operand(static_dependency));
         if ((static_dependency->isConstant()) || (static_dependency->isArgument())) {
+
             operands.back().updateOperandRegister();
+
         } else {
             dep_uids.push_back(dep_uid);
         }
     }
+    // std::cerr << "Here 0-3" << std::endl;
+
     // dep_uids.push_back(uid);
 
     return dep_uids;
@@ -1927,6 +1988,7 @@ Load::loadInternal() {
 MemoryRequest *
 Load::createMemoryRequest() {
     Addr memAddr = (operands.front().getPtrRegValue());
+    // std::cerr << "|| Creating load memory request for " << ir_string << " at " << memAddr << std::endl;
     size_t reqLen = getSizeInBytes();
     if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Launching %s\n", ir_string);
     if (dbg) DPRINTFS(RuntimeCompute, owner, "|| Addr[%x] Size[%i]\n", memAddr, reqLen);
@@ -1977,6 +2039,8 @@ Store::compute() {
 MemoryRequest *
 Store::createMemoryRequest() {
     Addr memAddr = (operands.at(1).getPtrRegValue());
+    // std::cerr << "|| Creating store memory request for " << ir_stub << ": " << getUID() << ": " << ir_string << " at " << memAddr << std::endl;
+
     size_t reqLen = operands.at(0).getSizeInBytes();
 
     MemoryRequest * req;
@@ -2840,6 +2904,7 @@ BitCast::initialize(llvm::Value * irval,
 
 void
 BitCast::compute() {
+    // std::cerr << "BitCast::compute() " <<  operands.front().getPtrRegValue() << std::endl;
 #if USE_LLVM_AP_VALUES
     auto opdata = operands.front().getPtrRegValue();
     setRegisterValue(opdata);
@@ -3223,17 +3288,20 @@ Phi::initialize(llvm::Value * irval,
 //std::deque<uint64_t>
 std::vector<uint64_t>
 Phi::runtimeInitialize() {
+    // std::cerr << "Here 0-0" << std::endl;
+
     assert(getDependencyCount() == 0);
     //std::deque<uint64_t> dep_uids;
     std::vector<uint64_t> dep_uids;
     std::shared_ptr<SALAM::Value> static_dependency;
-
+    
     auto it = phiArgs.find(previousBB);
     if (it != phiArgs.end()) static_dependency = it->second;
     else assert(0 && "Previous BasicBlock not found in PHI args");
 
     auto dep_uid = static_dependency->getUID();
     operands.push_back(SALAM::Operand(static_dependency));
+
     if ((static_dependency->isConstant()) || (static_dependency->isArgument())) {
         operands.back().updateOperandRegister();
     } else {

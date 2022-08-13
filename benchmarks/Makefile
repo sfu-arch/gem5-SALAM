@@ -1,6 +1,7 @@
 BENCHMARKS=\
 	bfs \
 	fft \
+	enzyme\
 	fir \
 	gemm \
 	md-grid \
@@ -9,7 +10,8 @@ BENCHMARKS=\
 	spmv \
 	stencil2d \
 	stencil3d \
-	vadd
+	vadd \
+	matdescent\
 
 CFLAGS=-O1 -Wall -Wno-unused-label
 

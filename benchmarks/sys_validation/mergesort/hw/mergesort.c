@@ -1,4 +1,5 @@
 #include "hw_defines.h"
+#define arr_size SIZE*sizeof(TYPE)
 
 void merge(int start, int m, int stop){
     

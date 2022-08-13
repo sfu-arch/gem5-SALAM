@@ -361,15 +361,26 @@ CommInterface::processMemoryRequests() {
             if (debug()) DPRINTF(CommInterfaceQueues, "Request Address: %lx\n", address);
             RequestPort * mport;
             if (inStreamRange(address)) {
+                last_valid_address = address;
                 mport = getValidStreamPort(address, (*it)->readLeft, true);
             } else if (inSPMRange(address)) {
                 mport = getValidSPMPort(address, (*it)->readLeft, true);
+                last_valid_address = address;
+
             } else if (inLocalRange(address)) {
+                last_valid_address = address;
                 mport = getValidLocalPort(address, true);
             } else if (inGlobalRange(address)) {
+                last_valid_address = address;
                 mport = getValidGlobalPort(address, true);
             } else {
-                panic("Address %lx is not reachable by any ports\n", address);
+                // if (last_valid_address) {
+                //     address = last_valid_address;
+                //     processMemoryRequests();
+                // }
+                // else {
+                    panic("Address %lx is not reachable by any ports\n", address);
+                // }
             }
             if (SPMPort * port = dynamic_cast<SPMPort *>(mport)) {
                 if (debug()) DPRINTF(CommInterfaceQueues, "Found available memory port\n");

@@ -25,6 +25,12 @@ SALAM::Value::Value(const Value &copy_val)
     ir_stub = copy_val.ir_stub;
     owner = copy_val.owner;
     dbg = copy_val.dbg;
+    ptr_size = copy_val.ptr_size;
+    reading_value_from_map = copy_val.reading_value_from_map;
+    is_unwrap = copy_val.is_unwrap;
+
+    owner = copy_val.owner;
+    dbg = copy_val.dbg;
 }
 
 SALAM::Value::Value(std::shared_ptr<SALAM::Value> copy_val)
@@ -35,6 +41,10 @@ SALAM::Value::Value(std::shared_ptr<SALAM::Value> copy_val)
     size = copy_val->getSize();
     ir_string = copy_val->getIRString();
     ir_stub = copy_val->getIRStub();
+    ptr_size = copy_val->getPtrSize();
+    reading_value_from_map = copy_val.get()->reading_value_from_map;
+    is_unwrap = copy_val.get()->is_unwrap;
+
     owner = copy_val->getOwner();
     dbg = copy_val->debug();
 }
@@ -49,6 +59,9 @@ SALAM::Value::operator = (Value &copy_val)
     size = copy_val.size;
     ir_string = copy_val.ir_string;
     ir_stub = copy_val.ir_stub;
+    reading_value_from_map = copy_val.reading_value_from_map;
+    is_unwrap = copy_val.is_unwrap;
+
     return *this;
 }
 
@@ -82,6 +95,8 @@ SALAM::Value::initialize(llvm::Value * irval, SALAM::irvmap * irmap) {
     llvm::raw_string_ostream ss2(tmpStr2);
     irval->printAsOperand(ss2);
     ir_stub = ss2.str();
+
+
 }
 
 void
@@ -145,7 +160,7 @@ SALAM::Value::addRegister(llvm::Type *irtype, bool istracked) {
 
 void
 SALAM::Value::addPointerRegister(bool istracked, bool isnull) {
-    assert(valueTy == llvm::Type::PointerTyID);
+    // assert(valueTy == llvm::Type::PointerTyID);
     returnReg = std::make_shared<PointerRegister>(istracked, isnull);
 }
 void
@@ -181,9 +196,16 @@ SALAM::Value::addPointerRegister(uint64_t val, bool istracked, bool isnull) {
 
 void
 SALAM::Value::setRegisterValue(const uint64_t data) {
+
     if (returnReg->isPtr()) {
+        // std::cerr << getUID() << " : " << getIRString() << ": setting pointer register value " << std::hex << data  << std::endl;
+        returnReg->writePtrData(data, ptr_size);
+        // std::cerr << "After write 1: " <<  std::dec << std::endl;
+
         if (dbg) DPRINTFS(Runtime, owner, "| Ptr Register\n");
         returnReg->writePtrData(data);
+        // std::cerr << "After write 2: " <<  std::dec << std::endl;
+
     } else {
     #if USE_LLVM_AP_VALUES
         if (dbg) DPRINTFS(Runtime, owner, "Unsupported type for register operation. \
@@ -256,7 +278,9 @@ SALAM::Value::setRegisterValue(uint8_t * data) {
         case llvm::Type::PointerTyID:
         {
             if (dbg) DPRINTFS(Runtime, owner, "Pointer\n");
-            returnReg->writePtrData(*(uint64_t *)data);
+            returnReg->writePtrData(*(uint64_t *)data, ptr_size);
+            if (dbg) DPRINTFS(Runtime, owner, "Pointer\n");
+            // returnReg->writePtrData(*(uint64_t *)data);
             break;
         }
         default:

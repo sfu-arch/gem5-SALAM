@@ -37,4 +37,7 @@ llvm-c
 BM_ARM_OUT
 .gdb_history
 .vscode
+/benchmarks/ARM
+1.txt
+2.txt
 build.sh

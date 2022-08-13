@@ -4,7 +4,9 @@ BENCHMARKS= \
 	md-knn \
 	nw \
 	stencil2d \
-	stencil3d
+	stencil3d \
+	matdescent \
+	matd2 \
 
 CFLAGS=-O1 -Wall -Wno-unused-label
 
