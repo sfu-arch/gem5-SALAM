@@ -1,3 +1,4 @@
+from distutils.command.config import config
 import m5
 from m5.objects import *
 from m5.util import *

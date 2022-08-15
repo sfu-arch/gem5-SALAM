@@ -34,12 +34,11 @@ class CommInterface : public BasicPioDevice
 
   public:
     bool debug() { return debugEnabled; }
-
+    Addr last_valid_address = 0;
   protected:
     class MemSidePort : public StreamRequestPort
     {
       friend class CommInterface;
-
       private:
         CommInterface *owner;
         std::queue<PacketPtr> outstandingPkts;

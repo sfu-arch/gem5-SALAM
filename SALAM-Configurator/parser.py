@@ -158,7 +158,7 @@ class AccCluster:
         lines.append("	external_range = [AddrRange(0x00000000, local_low-1), AddrRange(local_high+1, 0xFFFFFFFF)]")
         lines.append("	system.iobus.mem_side_ports = clstr.local_bus.cpu_side_ports")
         # Need to define l2coherency in the YAML file?
-        lines.append("	clstr._connect_caches(system, options, l2coherent=False)")
+        lines.append("	clstr._connect_caches(system, options, l2coherent=True)")
         lines.append("	gic = system.realview.gic")
         lines.append("")
 

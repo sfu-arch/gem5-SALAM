@@ -66,6 +66,15 @@
 namespace gem5
 {
 
+void BaseCache::incGlobalHitVal()
+{
+    std::cerr << name() << ": HIT\n";
+}
+void BaseCache::incGlobalMissVal()
+{
+    std::cerr << name() << ": MISS\n";
+}
+
 BaseCache::CacheResponsePort::CacheResponsePort(const std::string &_name,
                                           BaseCache *_cache,
                                           const std::string &_label)

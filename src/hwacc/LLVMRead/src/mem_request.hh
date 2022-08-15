@@ -10,7 +10,8 @@ using namespace gem5;
 
 class MemoryRequest {
   friend class CommInterface;
-  // friend class LLVMInterface;
+  friend class LLVMInterface;
+  friend class ActiveFunction;
   private:
     Addr address;
     size_t length;

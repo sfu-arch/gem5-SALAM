@@ -63,6 +63,12 @@ SALAM::BasicBlock::initialize(llvm::Value * irval, irvmap *vmap, SALAM::valueLis
         assert(instruct);
         instructions.push_back(instruct);
         instruct->initialize(&inst, vmap, valueList);
+        if (instruct->to_be_removed) {
+            llvm::errs() << "Removing Inst: " << inst << "\n";
+            instructions.pop_back();
+            continue;
+        }
+
         if (dbg) DPRINTFS(LLVMParse, owner, "Instruction (UID: %d) Initialization Complete\n", instruct->getUID());
     }
 }

@@ -26,7 +26,6 @@ parser.add_argument("-cv", "--conv", dest="conversion", help="Set number of conv
 args = parser.parse_args()
 
 
-
 config = ConfigParser()
 config.read(args.configFile)
 config.set('Memory','read_ports',args.memPorts)
@@ -44,7 +43,6 @@ config.set('FunctionalUnits','fu_counter',args.counters)
 config.set('FunctionalUnits','fu_gep',args.gepSet)
 config.set('FunctionalUnits','fu_compare',args.zeroCyl)
 config.set('FunctionalUnits','fu_conversion',args.conversion)
-
 
 with open (args.configFile,"w") as configfile:
 	config.write(configfile)
