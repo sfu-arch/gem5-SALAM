@@ -183,6 +183,7 @@ CommInterface::recvPacket(PacketPtr pkt) {
             clearMemRequest(writeReq, false); // Clear the request from the in-flight queue
         }
     } else {
+        std::cerr << "panic address = " << pkt->req->getPaddr() << std::endl;
         panic("Something went very wrong!");
     }
     if (!tickEvent.scheduled())

@@ -1,8 +1,4 @@
-%103, div.7
-%257, div
-%169, div.4
-%235, div.1
-%213, div.2
-%191, div.3
-%147, div.5
-%125, div.6
+div, div
+div.1, div.1
+div.2, div.2
+div.3, div.3

@@ -6,12 +6,14 @@ DEBUG="false"
 PRINT_TO_FILE="true"
 VALGRIND="false"
 # CACHE_SIZES=(1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152)
-CACHE_SIZES=(131072 262144 524288 1048576 2097152)
+CACHE_SIZES=(512)
 
 BIN_SCALES=(16 16 8 4 2)
-MODES=("ad" "orig")
-BIN_CONFIG_PATH="/localhome/mha157/gem5-SALAM/src/hwacc/bin_config.txt"
-# PY_FILE_PATH="/localhome/mha157/gem5-SALAM/1.txt"
+# MODES=("ad" "orig")
+MODES=("ad")
+
+BIN_CONFIG_PATH="/localhome/mha157/new_salam/gem5-SALAM/src/hwacc/bin_config.txt"
+# PY_FILE_PATH="/localhome/mha157/new_salam/gem5-SALAM/1.txt"
 
 while getopts ":b:f:vdp" opt; do
 	case $opt in
@@ -95,7 +97,7 @@ RUN_SCRIPT="$BINARY $DEBUG_FLAGS --outdir=$OUTDIR \
 # ${M5_PATH}/SALAM-Configurator/systembuilder.py --sysName $BENCH --benchDir "benchmarks/AD/${BENCH}"
 
 
-PY_FILE_PATH="/localhome/mha157/gem5-SALAM/configs/SALAM/generated/$BENCH.py"
+PY_FILE_PATH="/localhome/mha157/new_salam/gem5-SALAM/configs/SALAM/generated/$BENCH.py"
 
 for mode in ${MODES[@]}; do
 	for t in ${CACHE_SIZES[@]}; do
@@ -121,7 +123,7 @@ for mode in ${MODES[@]}; do
 		echo "Done with cache size: ${t}"
 		cp 2.txt $OUTDIR/SALAM_OUT_${mode}_${t}.txt
 		cp 1.txt $OUTDIR/log_${mode}_${t}.txt
-		python3 cache_stat_extractor.py ${BENCH}_${mode} $t  >> cache_result.csv
+		# python3 cache_stat_extractor.py ${BENCH}_${mode} $t  >> cache_result.csv
 		rm $OUTDIR/SALAM_OUT_${mode}_${t}.txt
 		rm $OUTDIR/log_${mode}_${t}.txt
 	done
