@@ -40,3 +40,6 @@ acc_cluster:
         Type: SPM
         Size: 1000
         Ports: 2
+hw_config:
+  top:
+  pathfinder:

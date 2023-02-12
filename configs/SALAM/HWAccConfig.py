@@ -24,8 +24,8 @@ def AccConfig(acc, bench_file, config_file):
     # Set scheduling constraints
     #acc.llvm_interface.sched_threshold = ConfigSectionMap("Scheduler")['sched_threshold']
     #acc.llvm_interface.clock_period = ConfigSectionMap("AccConfig")['clock_period']
-    #acc.llvm_interface.lockstep_mode = Config.getboolean("Scheduler", 'lockstep_mode')
-
+    # acc.llvm_interface.lockstep_mode = Config.getboolean("Scheduler", 'lockstep_mode')
+    # acc.llvm_interface.lockstep_mode = False
     #TODO: Auto generate the functional unit list
 
 	# Initialize HWInterface Objects

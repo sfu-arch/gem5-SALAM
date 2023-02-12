@@ -6,11 +6,11 @@ DEBUG="false"
 PRINT_TO_FILE="true"
 VALGRIND="false"
 # CACHE_SIZES=(1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152)
-CACHE_SIZES=(512)
+declare -a CACHE_SIZES=(16384)
 
-BIN_SCALES=(16 16 8 4 2)
+# BIN_SCALES=(16 16 8 4 2)
 # MODES=("ad" "orig")
-MODES=("ad")
+MODES=("orig")
 
 BIN_CONFIG_PATH="/localhome/mha157/new_salam/gem5-SALAM/src/hwacc/bin_config.txt"
 # PY_FILE_PATH="/localhome/mha157/new_salam/gem5-SALAM/1.txt"
@@ -107,25 +107,29 @@ for mode in ${MODES[@]}; do
 		if [ $mode == "ad" ]; then
 			LINE="1,512,"
 		else
-			LINE="0,"
+			LINE="0,\ntrue"
 		fi
-		# for u in ${BIN_SCALES[@]}; do
-		# 	DIV=$((t/u))
-		# 	LINE="${LINE}${DIV},"
-		# done
-		echo $LINE >> $BIN_CONFIG_PATH
+		> $BIN_CONFIG_PATH
+		echo -e $LINE >> $BIN_CONFIG_PATH
 		if [ "${PRINT_TO_FILE}" == "true" ]; then
 			mkdir -p $OUTDIR
-			$RUN_SCRIPT > ${OUTDIR}/debug-trace.txt > 2.txt 2> 1.txt
+			$RUN_SCRIPT > ${OUTDIR}/debug-trace.txt > 2.txt 2> 1.txt &
 		else
-			$RUN_SCRIPT  > 2.txt 2> 1.txt
+			$RUN_SCRIPT > 2.txt 2> 1.txt & 
 		fi
+		PID="${!}"
+		while [[  $(grep -c "Performance Analysis" 2.txt) -le 1 ]] && [[ $(grep -c "END LIBC BACKTRACE" 1.txt)  -eq 0 ]]
+		do
+			echo "${BENCH} not finished!"
+			sleep 10
+		done
 		echo "Done with cache size: ${t}"
 		cp 2.txt $OUTDIR/SALAM_OUT_${mode}_${t}.txt
 		cp 1.txt $OUTDIR/log_${mode}_${t}.txt
-		# python3 cache_stat_extractor.py ${BENCH}_${mode} $t  >> cache_result.csv
+		python3 cache_stat_extractor.py ${BENCH}_${mode} $t  >> cache_result.csv
 		rm $OUTDIR/SALAM_OUT_${mode}_${t}.txt
 		rm $OUTDIR/log_${mode}_${t}.txt
+		kill -9 $PID
 	done
 done
 # Debug Flags List

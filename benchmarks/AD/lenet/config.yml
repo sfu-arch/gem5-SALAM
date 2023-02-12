@@ -10,8 +10,8 @@ acc_cluster:
       InterruptNum: 95
   - Accelerator:
     - Name: Top
-      IrPath: benchmarks/AD/alexnet/hw/top.ll
-      ConfigPath: benchmarks/AD/alexnet/hw/top.ini
+      IrPath: benchmarks/AD/lenet/hw/top.ll
+      ConfigPath: benchmarks/AD/lenet/hw/top.ini
       PIOSize: 25
       InterruptNum: 68
       PIOMaster: LocalBus
@@ -20,8 +20,11 @@ acc_cluster:
       Debug: False
   - Accelerator:
     - Name: alexnet
-      IrPath: benchmarks/AD/alexnet/hw/alexnet.ll
-      ConfigPath: benchmarks/AD/alexnet/hw/alexnet.ini
+      IrPath: benchmarks/AD/lenet/hw/alexnet.ll
+      ConfigPath: benchmarks/AD/lenet/hw/alexnet.ini
       Debug: False
       PIOSize: 1
       PIOMaster: LocalBus
+hw_config:
+  top:
+  alexnet:

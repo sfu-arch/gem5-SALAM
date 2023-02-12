@@ -163,7 +163,7 @@ static void conv(double* mat1, int mat_width1, double* mat2, int mat_width2, int
     for (i = 0; i < mat_width1; i+=stride) {
         for (j = 0; j < mat_width2; j+=stride) {
             out[i * mat_width2 + j] = 0;
-            #pragma clang loop unroll_count(8)
+            #pragma clang loop unroll(full)
             for (k = 0; k < mat_width1; k++) {
                 out[i * mat_width2 + j] += mat1[i * mat_width1 + k] * mat2[k * mat_width2 + j];
             }
@@ -176,6 +176,7 @@ static void pool(double* mat, int mat_width, int pool_width, double* out) {
     int i, j, k;
     for (i = 0; i < mat_width; i+=1) {
         // #pragma clang loop unroll_count(16)
+        #pragma clang loop unroll(full)
         for (j = 0; j < mat_width; j+=1) {
             out[i * mat_width + j] = 0;
             for (k = 0; k < pool_width; k++) {
@@ -195,6 +196,7 @@ void dense(double *mat1, int mat1_width, double *weight, int weight_count, doubl
     for (i = 0; i < weight_count; i++) {
         double tmp = 0;
         // #pragma clang loop unroll_count(8)
+        #pragma clang loop unroll(full)
         for (int j = 0; j < mat1_width; j++) {
             tmp += mat1[j] * weight[i];
         }

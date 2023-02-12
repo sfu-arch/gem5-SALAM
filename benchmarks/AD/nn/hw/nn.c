@@ -10,10 +10,21 @@
 
 #define MNIST_LABEL_MAGIC 0x00000801
 #define MNIST_IMAGE_MAGIC 0x00000803
-#define MNIST_IMAGE_WIDTH 2
-#define MNIST_IMAGE_HEIGHT 2
+
+#ifndef WORKING_SET_SIZE
+#define MNIST_IMAGE_WIDTH 35
+#define MNIST_IMAGE_HEIGHT 35
+#else
+#define MNIST_IMAGE_WIDTH WORKING_SET_SIZE
+#define MNIST_IMAGE_HEIGHT WORKING_SET_SIZE
+#endif
+
 #define MNIST_IMAGE_SIZE MNIST_IMAGE_WIDTH * MNIST_IMAGE_HEIGHT
-#define MNIST_LABELS 2
+#ifdef N
+#define MNIST_LABELS N
+#else
+#define MNIST_LABELS 10
+#endif
 #define PIXEL_SCALE(x) (((double) (x)) / 255.0f)
 
 extern int enzyme_const;
@@ -32,24 +43,24 @@ typedef struct neural_network_t_ {
     double W[MNIST_LABELS][MNIST_IMAGE_SIZE];
 } neural_network_t;
 
-
-static void neural_network_softmax_v2(const double * activations, double* outp, int length)
+__attribute__((always_inline))
+void neural_network_softmax_v2(const double * activations, double* outp)
 {
     int i;
     double sum, max;
-// #pragma clang loop unroll(full)
-    for (i = 1, max = activations[0]; i < length; i++) {
+// #pragma clang loop unroll_count(8)
+    for (i = 1, max = activations[0]; i < MNIST_LABELS; i++) {
         if (activations[i] > max) {
             max = activations[i];
         }
     }
-// #pragma clang loop unroll(full)
-    for (i = 0, sum = 0; i < length; i++) {
+// #pragma clang loop unroll_count(8)
+    for (i = 0, sum = 0; i < MNIST_LABELS; i++) {
         sum += exp(activations[i] - max);
     }
 
-// #pragma clang loop unroll(full)
-    for (i = 0; i < length; i++) {
+// #pragma clang loop unroll_count(8)
+    for (i = 0; i < MNIST_LABELS; i++) {
         outp[i] = exp(activations[i] - max) / sum;
     }
 #if 0
@@ -71,17 +82,17 @@ static void neural_network_softmax_v2(const double * activations, double* outp, 
 #endif
 }
 
-static double neural_network_hypothesis_v2(mnist_image_t * image, neural_network_t * network, uint8_t label)
+__attribute__((always_inline))
+double neural_network_hypothesis_v2(mnist_image_t * image, neural_network_t * network, uint8_t label)
 {
     // double activations[MNIST_LABELS] = {0};
     double *activations = (double *) malloc(MNIST_LABELS * sizeof(double));
     // double *activations = (double *) 0x100200c0;
 
     int i, j;
-// #pragma clang loop unroll(full)
     for (i = 0; i < MNIST_LABELS; i++) {
         activations[i] = network->b[i];
-#pragma clang loop unroll_count(8)
+#pragma clang loop unroll_count(16)
         for (j = 0; j < MNIST_IMAGE_SIZE; j++) {
             activations[i] += network->W[i][j] * PIXEL_SCALE(image->pixels[j]);
         }
@@ -89,9 +100,8 @@ static double neural_network_hypothesis_v2(mnist_image_t * image, neural_network
  
     double *activations2 = (double *) 0x80caa120;
     // double *activations2 = (double *) malloc(MNIST_LABELS * sizeof(double));
-
     // double activations2[MNIST_LABELS] = { 0 };
-    neural_network_softmax_v2(activations, activations2, MNIST_LABELS);
+    neural_network_softmax_v2(activations, activations2);
     return -log(activations2[label]);
 }
 

@@ -38,6 +38,7 @@ SALAM::BasicBlock::BasicBlock_Debugger::dumper(SALAM::BasicBlock *bb)
     // }
 }
 
+
 void
 SALAM::BasicBlock::initialize(llvm::Value * irval, irvmap *vmap, SALAM::valueListTy * valueList) {
     // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
@@ -55,6 +56,8 @@ SALAM::BasicBlock::initialize(llvm::Value * irval, irvmap *vmap, SALAM::valueLis
     }
 
     if (dbg) DPRINTFS(LLVMParse, owner, "Initialize BasicBlocks\n");
+
+    std::shared_ptr<SALAM::Instruction> pop_inst = nullptr;
 	for (auto inst_iter = bb->begin(); inst_iter != bb->end(); inst_iter++) {
         llvm::Instruction &inst = *inst_iter;
         std::shared_ptr<SALAM::Value> instval = vmap->find(&inst)->second;
@@ -63,12 +66,20 @@ SALAM::BasicBlock::initialize(llvm::Value * irval, irvmap *vmap, SALAM::valueLis
         assert(instruct);
         instructions.push_back(instruct);
         instruct->initialize(&inst, vmap, valueList);
+        if (instval->is_pop_req)
+            pop_inst = instruct;
+
         if (instruct->to_be_removed) {
-            llvm::errs() << "Removing Inst: " << inst << "\n";
             instructions.pop_back();
             continue;
         }
 
+        // If the instruction is a Tape read, it should wait for the pop instruction
+        // before it.
+        if (instruct->is_read && pop_inst != nullptr && pop_inst != instruct)
+            instruct->staticDependencies.push_back(pop_inst);
+
         if (dbg) DPRINTFS(LLVMParse, owner, "Instruction (UID: %d) Initialization Complete\n", instruct->getUID());
     }
+
 }

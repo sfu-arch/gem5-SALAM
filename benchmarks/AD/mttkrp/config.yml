@@ -25,4 +25,7 @@ acc_cluster:
       Debug: False
       PIOSize: 10
       PIOMaster: LocalBus
-    
+hw_config:
+  top:
+  mttkrp:
+

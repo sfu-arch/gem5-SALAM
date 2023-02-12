@@ -29,6 +29,12 @@ SALAM::Value::Value(const Value &copy_val)
 
     owner = copy_val.owner;
     dbg = copy_val.dbg;
+
+    is_push_req = copy_val.is_push_req;
+    is_pop_req = copy_val.is_pop_req;
+    is_read = copy_val.is_read;
+    is_write = copy_val.is_write;
+    is_reverse = copy_val.is_reverse;
 }
 
 SALAM::Value::Value(std::shared_ptr<SALAM::Value> copy_val)
@@ -45,6 +51,12 @@ SALAM::Value::Value(std::shared_ptr<SALAM::Value> copy_val)
 
     owner = copy_val->getOwner();
     dbg = copy_val->debug();
+
+    is_push_req = copy_val->is_push_req;
+    is_pop_req = copy_val->is_pop_req;
+    is_read = copy_val->is_read;
+    is_write = copy_val->is_write;
+    is_reverse = copy_val->is_reverse;
 }
 
 // operator equals
@@ -60,6 +72,11 @@ SALAM::Value::operator = (Value &copy_val)
     reading_value_from_map = copy_val.reading_value_from_map;
     is_unwrap = copy_val.is_unwrap;
 
+    is_push_req = copy_val.is_push_req;
+    is_pop_req = copy_val.is_pop_req;
+    is_read = copy_val.is_read;
+    is_write = copy_val.is_write;
+    is_reverse = copy_val.is_reverse;
     return *this;
 }
 

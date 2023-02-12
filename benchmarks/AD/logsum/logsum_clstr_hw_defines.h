@@ -1,5 +1,5 @@
 //BEGIN GENERATED CODE
-//Cluster: LOGSUM
+//Cluster: LOGSUM_CLSTR
 //NonCoherentDMA
 #define DMA_Flags 0x10020000
 #define DMA_RdAddr 0x10020001
@@ -9,7 +9,4 @@
 #define TOP 0x10020040
 //Accelerator: LOGSUM
 #define LOGSUM 0x10020080
-#define MAT 0x100200c0
-#define VEC 0x10033980
-#define OUT 0x10033cc0
 //END GENERATED CODE

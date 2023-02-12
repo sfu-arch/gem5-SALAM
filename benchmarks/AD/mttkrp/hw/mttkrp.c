@@ -8,7 +8,6 @@
 #include <inttypes.h>
 #include <string.h>
 
-#define N 100
 
 extern "C" {
     void top();
@@ -18,7 +17,12 @@ extern int enzyme_const;
 template<typename Return, typename... T>
 Return __enzyme_autodiff(T...);
 
-#define DIMS 8
+#ifndef N
+#define N 12
+#endif
+
+#define DIMS N
+
 typedef enum { taco_mode_dense, taco_mode_sparse } taco_mode_t;
 typedef struct {
   int32_t      order;         // tensor order (number of modes)
@@ -52,7 +56,7 @@ void compute(taco_tensor_t *A, taco_tensor_t *B, taco_tensor_t *D, taco_tensor_t
       int32_t kB = i * B2_dimension + k;
       for (int32_t l = 0; l < D1_dimension; l++) {
         int32_t lB = kB * B3_dimension + l;
-        #pragma clang loop unroll(full)
+        #pragma clang loop unroll_count(16)
         for (int32_t j = 0; j < C2_dimension; j++) {
           int32_t jA = i * A2_dimension + j;
           int32_t jD = l * D2_dimension + j;

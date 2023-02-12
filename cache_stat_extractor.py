@@ -108,7 +108,7 @@ for line in dump_file:
         current_mode = 'R'
     if ': MISS' in line or ': HIT' in line:
         handle_mem_access(line, current_mode)
-    if 'Launching read' in line:
+    if 'is_read' in line:
         read_count += 1
 salam_stat_file = open(salam_stat_dir, 'r', encoding="ISO-8859-1")
 runtime = 0

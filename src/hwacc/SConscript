@@ -33,6 +33,7 @@ if env['TARGET_ISA'] == 'arm':
 
     # 
     Source('comm_interface.cc')
+    Source('bin_hierarchy.cpp')
     Source('compute_unit.cc')
     Source('llvm_interface.cc')
     Source('dma_write_fifo.cc')

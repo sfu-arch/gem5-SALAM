@@ -6,10 +6,11 @@
 
 # clean:
 # 	rm -f *.ll
+BIN_SIZE?=256
 MAIN_FILE=alexnet
 KERN=$(MAIN_FILE).c top.c
 build: $(FILES)
 	clang++ -O3 -S -fno-slp-vectorize -fno-vectorize -fno-unroll-loops -fno-inline -fno-builtin -emit-llvm $(KERN) -target x86_64
-	opt $(MAIN_FILE).ll -load=../../LLVMEnzyme-12.so -enzyme -o $(MAIN_FILE).ll -S -loop-unroll -mem2reg -always-inline -enable-bins -bin-size=10000
+	opt $(MAIN_FILE).ll -load=../../LLVMEnzyme-12.so -enzyme -o $(MAIN_FILE).ll -S -loop-unroll -mem2reg -always-inline -enable-bins -bin-size=$(BIN_SIZE)
 clean:
 	rm -f *.ll

@@ -1,9 +1,9 @@
 #!/bin/bash
-# BENCH_NAMES=("nn" "alexnet" "gravity" "logsum" "matd" "pathfinder" "sddmm" "somier")
-BENCH_NAMES=("alexnet" )
+# BENCH_NAMES=("nn" "alexnet" "gravity" "logsum" "matd" "pathfinder" "sddmm" "somier" "mass_spring")
+BENCH_NAMES=("mass_spring" )
 
 CURR_DIR=$(pwd)
-MAKE_DIR="/localhome/mha157/gem5-SALAM/benchmarks/AD/"
+MAKE_DIR="/localhome/mha157/new_salam/gem5-SALAM/benchmarks/AD/"
 for BENCH in ${BENCH_NAMES[@]}; do
     cd $MAKE_DIR$BENCH
     make -j;

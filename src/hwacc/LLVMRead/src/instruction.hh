@@ -33,7 +33,6 @@ class Instruction : public Value
         uint64_t functional_unit = 0;
         HWInterface* hw_interface;
     protected:
-        valueListTy staticDependencies;
         // Operands
         std::vector<SALAM::Operand> operands;
 
@@ -50,6 +49,8 @@ class Instruction : public Value
         bool committed = false;
         bool isready = false;
     public:
+        valueListTy staticDependencies;
+
         bool to_be_removed = false;
 
         Instruction(uint64_t id, gem5::SimObject * owner, bool dbg); //
@@ -84,6 +85,7 @@ class Instruction : public Value
         void linkOperands(const SALAM::Operand &newOp);
         std::vector<SALAM::Operand> * getOperands() { return &operands; }
         uint64_t getFunctionalUnit() { return functional_unit; }
+        virtual bool isBarrier() { return false; }
         virtual bool isReturn() { return false; }
         virtual bool isTerminator() { return false; }
         virtual bool isPhi() { return false; }
@@ -135,15 +137,7 @@ class BadInstruction : public Instruction {
                 irvmap * irmap,
                 SALAM::valueListTy * valueList);
         std::shared_ptr<SALAM::BadInstruction> clone() const { return std::static_pointer_cast<SALAM::BadInstruction>(createClone()); }
-        virtual std::shared_ptr<SALAM::Value> createClone() const override { 
-            auto ptr = std::shared_ptr<SALAM::BadInstruction>(new SALAM::BadInstruction(*this));
-            ptr->is_pop_req = is_pop_req;
-            ptr->is_push_req = is_push_req;
-            ptr->push_pop_count = push_pop_count;
-            ptr->is_write  = is_write;
-            ptr->is_read = is_read;
-            return ptr;
-            }
+        virtual std::shared_ptr<SALAM::Value> createClone() const override { return std::shared_ptr<SALAM::BadInstruction>(new SALAM::BadInstruction(*this)); }
         virtual bool isBadInstruction() { return true; }
 };
 
@@ -193,8 +187,45 @@ createRetInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t cycles,
               uint64_t fu);
 
-// SALAM-Br // --------------------------------------------------------------//
+// SALAM-Barrier // ---------------------------------------------------------//
+class BarrierInstruction : public Instruction {
+  // Works as a barrier between instructions before and after it.
+public:
+  BarrierInstruction(uint64_t id, gem5::SimObject * owner, bool dbg,
+            uint64_t OpCode,
+              uint64_t cycles,
+              uint64_t fu);
+  ~BarrierInstruction() = default;
+	void initialize (llvm::Value * irval,
+																irvmap * irmap,
+																SALAM::valueListTy * valueList);
+  bool isBarrier() override { return true; }
+  bool launch() override;
+  void compute() override;
 
+	size_t getMemReqSize() { return size; }
+	uint64_t getCycleCount() { return conditions.at(0).at(2); }
+	void dump() { if (dbgr->enabled()) { dumper(); inst_dbg->dumper(static_cast<SALAM::Instruction*>(this));}}
+	void dumper();
+  std::shared_ptr<SALAM::BarrierInstruction> clone() const {
+    return std::static_pointer_cast<SALAM::BarrierInstruction>(createClone());
+  }
+  virtual std::shared_ptr<SALAM::Value> createClone() const override { return std::shared_ptr<SALAM::BarrierInstruction>(new SALAM::BarrierInstruction(*this)); }
+
+private:
+	std::vector< std::vector<uint64_t> > conditions;
+	SALAM::Debugger *dbgr;
+	uint64_t currentCycle;
+	uint64_t size = 1;
+};
+
+std::shared_ptr<SALAM::Instruction>
+createBarrierInst(uint64_t id, gem5::SimObject * owner, bool dbg,
+              uint64_t OpCode,
+              uint64_t cycles,
+              uint64_t fu);
+
+// SALAM-Br // --------------------------------------------------------------//
 class Br : public Instruction {
     private:
         std::vector< std::vector<uint64_t> > conditions;
@@ -942,12 +973,7 @@ class Store : public Instruction {
         void dump() { if (dbgr->enabled()) { dumper(); inst_dbg->dumper(static_cast<SALAM::Instruction*>(this));}}
         void dumper();
         std::shared_ptr<SALAM::Store> clone() const { return std::static_pointer_cast<SALAM::Store>(createClone()); }
-        virtual std::shared_ptr<SALAM::Value> createClone() const override { 
-            auto ptr = std::shared_ptr<SALAM::Store>(new SALAM::Store(*this));
-            ptr->is_write = is_write;
-            ptr->is_reverse = is_reverse;
-            return ptr;
-        }
+        virtual std::shared_ptr<SALAM::Value> createClone() const override { return std::shared_ptr<SALAM::Store>(new SALAM::Store(*this)); }
 
         MemoryRequest * createMemoryRequest() override;
 };

@@ -18,10 +18,13 @@ Return __enzyme_autodiff(T...);
 * email: cristobal.ramirez@bsc.es
 * Barcelona Supercomputing Center (2020)
 *************************************************************************/
-
 #define NUM_RUNS 1
-#define ROWS 100
-#define COLS 100
+#ifdef N
+#define ROWS N
+#else
+#define ROWS 32
+#endif
+#define COLS 128
 #define MIN(a, b) ((a)<=(b) ? (a) : (b))
 
 extern "C" {
@@ -37,8 +40,8 @@ void run(double *src, double *wall, double *dst)
             temp = src;
             src = dst;
             dst = temp;
-            #pragma clang loop unroll_count(16)
-            for(int n = 1; n < COLS; n++){
+#pragma clang loop unroll_count(128)
+            for(int n = 0; n < COLS; n++){
               min = src[t * COLS + n];
               if (n > 0)
                 min = MIN(min, src[t * COLS + n-1]);

@@ -3,7 +3,6 @@
 #define CHECK
 
 #define TYPE double
-#define N 	30
 #define M 	30
 #define MAT_SIZE	N*M*sizeof(TYPE)
 #define VEC_SIZE	M*sizeof(TYPE)

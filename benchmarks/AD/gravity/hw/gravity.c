@@ -8,8 +8,10 @@
 #include <inttypes.h>
 #include <string.h>
 
-#define N 8
-
+#ifndef N
+#define N 128
+#endif
+#define HALFN N/2
 extern "C" {
     void top();
 }
@@ -23,9 +25,11 @@ double dt = 0.001;
 double ComputeU(double *x) {
     double r;
     double u = 1.0;
-    for (int i = 0; i < N/2; i++) {
-        for (int j=i+1; j < N/2; j++) {
-            r = x[i*(N>>1)+j ] - x[j*(N>>1)+i];
+    // #pragma clang loop unroll_count(4)
+    for (int i = 0; i < HALFN; i++) {
+        #pragma clang loop unroll_count(32)
+        for (int j=0; j < HALFN; j++) {
+            r = x[i*(HALFN)+j ] - x[j*HALFN+i];
             u *= -1.0 / (r + 0.001);
         }
     }

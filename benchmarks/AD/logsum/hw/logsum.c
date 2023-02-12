@@ -23,11 +23,13 @@ inline double max(double x, double y) {
     return (x > y) ? x : y;
 }
 
+#ifndef N
 #define N 10000
+#endif
 static double logsumexp(const double * x) {
   double A = x[0];
   double sema = 1;
-  #pragma clang loop unroll_count(8)
+  #pragma clang loop unroll_count(256)
   for(int i=0; i<N; i++) {
     sema *= exp(x[i] - A);
   }

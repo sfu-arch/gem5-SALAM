@@ -12,7 +12,7 @@ from m5.objects.NoncoherentDma import NoncoherentDma
 from m5.objects.StreamDma import StreamDma
 
 class ClusterCache(Cache):
-    assoc = 4
+    assoc = 2
     tag_latency = 20
     data_latency = 20
     response_latency = 20

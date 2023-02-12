@@ -7,9 +7,13 @@
 ///////////// END DEFINES /////////////
 
 ///////////// VAR DEFINES /////////////
+#ifdef N
+#define IMG_WIDTH N
+#define IMG_HEIGHT N
+#elif
 #define IMG_WIDTH 32
 #define IMG_HEIGHT 32
-
+#endif
 #define LAYER_1_FILTER_COUNT  6
 // #define LAYER_1_FILTER_COUNT  2
 
@@ -79,7 +83,7 @@ static void conv(double* mat1, int mat_width1, double* mat2, int mat_width2, dou
     for (i = 0; i < mat_width1; i++) {
         for (j = 0; j < mat_width2; j++) {
             out[i * mat_width2 + j] = 0;
-            #pragma clang loop unroll_count(8)
+            #pragma clang loop unroll(full)
             for (k = 0; k < mat_width1; k++) {
                 out[i * mat_width2 + j] += mat1[i * mat_width1 + k] * mat2[k * mat_width2 + j];
             }
