@@ -1,0 +1,10 @@
+{
+    "tape": {
+        "enabled": false,
+        "size": 512
+    },
+    "prefetch": {
+        "enabled": true,
+        "block_size": 512
+    }
+}

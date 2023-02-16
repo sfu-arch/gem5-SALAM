@@ -3,9 +3,15 @@
 
 #include <fstream>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
+using json = nlohmann::json;
+
+constexpr kTapeEntrySize = 8;
 uint64_t last_id = 0;
 bool enable_prefetch = false;
+int cache_block_size = 512;
+int prefetch_step = 32;
 
 std::vector<Addr> pushed_addresses;
 LLVMInterface::LLVMInterface(const LLVMInterfaceParams &p)
@@ -36,6 +42,14 @@ LLVMInterface::LLVMInterface(const LLVMInterfaceParams &p)
     }
     line_count++;
   }
+  std::ifstream tapeman_config("/localhome/mha157/new_salam/gem5-SALAM/src/hwacc/tapeman_config.json");
+  json data = json::parse(tapeman_config);
+  bool tape_en = data["tape"]["enabled"];
+  int tape_size = tape_en ? (int) data["tape"]["size"]: 0;
+  bool prefetch_en = data["prefetch"]["enabled"];
+  cache_block_size = prefetch_en? (int) data["prefetch"]["block_size"]: 512;
+  prefetch_step = cache_block_size / kTapeEntrySize;
+  std::cerr << "Tape enabled: " << tape_en << ", size: " << tape_size << ", prefetch enabled: " << prefetch_en << ", block size: " << cache_block_size << std::endl;
   std::cerr << "########### After TEXT #########\n" << my_text << std::endl;
 
   MyReadFile.close();
@@ -974,6 +988,7 @@ void LLVMInterface::launchRead(MemoryRequest *memReq, ActiveFunction *func) {
   comm->enqueueRead(memReq);
 }
 
+int prefetch_iter = 0;
 void LLVMInterface::ActiveFunction::launchBarrier(std::shared_ptr<SALAM::Instruction> inst) {
   // TODO: Fix the GEP problem. There are multiple GEPs in the same basic block. We need a separate prefetch for each GEP.
   if (!enable_prefetch)
@@ -988,24 +1003,20 @@ void LLVMInterface::ActiveFunction::launchBarrier(std::shared_ptr<SALAM::Instruc
     return;
   }
 
+  // Consider the block is 256 bytes and with each prefetch, we get 1 block. We need to prefetch every 32 iterations.
   for (int i = 0; i < tape_count; i++) {
     if (pushed_addresses.empty()) {
       break;
     }
-    auto mem_req = new MemoryRequest(pushed_addresses.back(), 8); // 8 bytes
-    owner->launchRead(mem_req, this);  
-    std::cerr << "Launching barrier. Sending mem req to address:  " << inst->getIRString() << " "  << pushed_addresses.back() << " with size " << size << std::endl;
-
+    
+    if (prefetch_iter % prefetch_step == 0) {
+      auto mem_req = new MemoryRequest(pushed_addresses.back(), 8); // 8 bytes
+      owner->launchRead(mem_req, this);  
+      std::cerr << "Launching barrier. Sending mem req to address:  " << inst->getIRString() << " "  << pushed_addresses.back() << " with size " << size << std::endl;
+    }
     pushed_addresses.pop_back();
   }
-
-  // current_barrier_addr -= size;
-  // Addr addr = current_barrier_addr;
-  // std::cerr << "Launching barrier. Sending mem req to address:  " << inst->getIRString() << " "  << addr << " with size " << size << std::endl;
-
-  // auto mem_req = new MemoryRequest(addr, size);
-  // auto rd_uid = inst->getUID();
-  // owner->launchRead(mem_req, this);
+  prefetch_iter++;
 }
 
 void LLVMInterface::ActiveFunction::launchRead(
