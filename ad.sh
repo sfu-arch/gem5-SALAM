@@ -107,7 +107,7 @@ for mode in ${MODES[@]}; do
 		if [ $mode == "ad" ]; then
 			LINE="1,512,"
 		else
-			LINE="0,\ntrue"
+			LINE="0,"
 		fi
 		> $BIN_CONFIG_PATH
 		echo -e $LINE >> $BIN_CONFIG_PATH

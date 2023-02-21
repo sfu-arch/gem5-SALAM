@@ -4,7 +4,8 @@
         "size": 512
     },
     "prefetch": {
-        "enabled": true,
+        "enabled": false,
         "block_size": 512
-    }
+    },
+    "sotre_consecutive": false
 }

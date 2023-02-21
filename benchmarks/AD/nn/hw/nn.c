@@ -92,7 +92,7 @@ double neural_network_hypothesis_v2(mnist_image_t * image, neural_network_t * ne
     int i, j;
     for (i = 0; i < MNIST_LABELS; i++) {
         activations[i] = network->b[i];
-#pragma clang loop unroll_count(16)
+#pragma clang loop unroll_count(128)
         for (j = 0; j < MNIST_IMAGE_SIZE; j++) {
             activations[i] += network->W[i][j] * PIXEL_SCALE(image->pixels[j]);
         }

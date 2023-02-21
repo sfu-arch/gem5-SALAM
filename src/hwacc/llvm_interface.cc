@@ -7,11 +7,12 @@
 
 using json = nlohmann::json;
 
-constexpr kTapeEntrySize = 8;
+constexpr int kTapeEntrySize = 8;
 uint64_t last_id = 0;
 bool enable_prefetch = false;
 int cache_block_size = 512;
 int prefetch_step = 32;
+bool consecutive_store = false;
 
 std::vector<Addr> pushed_addresses;
 LLVMInterface::LLVMInterface(const LLVMInterfaceParams &p)
@@ -30,10 +31,6 @@ LLVMInterface::LLVMInterface(const LLVMInterfaceParams &p)
   int line_count = 0;
   while (getline(MyReadFile, my_text)) {
     std::cerr << "########### TEXT #########\n" << my_text << std::endl;
-    if (line_count == 1) {
-      enable_prefetch = my_text == "true";
-      break;
-    }
     while ((pos = my_text.find(delimiter)) != std::string::npos) {
       std::string token = my_text.substr(0, my_text.find(delimiter));
       std::cerr << "########### TOKEN #########\n" << token << std::endl;
@@ -46,10 +43,11 @@ LLVMInterface::LLVMInterface(const LLVMInterfaceParams &p)
   json data = json::parse(tapeman_config);
   bool tape_en = data["tape"]["enabled"];
   int tape_size = tape_en ? (int) data["tape"]["size"]: 0;
-  bool prefetch_en = data["prefetch"]["enabled"];
-  cache_block_size = prefetch_en? (int) data["prefetch"]["block_size"]: 512;
+  enable_prefetch = data["prefetch"]["enabled"];
+  cache_block_size = enable_prefetch? (int) data["prefetch"]["block_size"]: 512;
   prefetch_step = cache_block_size / kTapeEntrySize;
-  std::cerr << "Tape enabled: " << tape_en << ", size: " << tape_size << ", prefetch enabled: " << prefetch_en << ", block size: " << cache_block_size << std::endl;
+  consecutive_store = data["sotre_consecutive"];
+  std::cerr << "Cons Store " << consecutive_store << std::endl;
   std::cerr << "########### After TEXT #########\n" << my_text << std::endl;
 
   MyReadFile.close();

@@ -6,7 +6,11 @@
 
 #include <cmath>
 
+extern bool consecutive_store;
+
 namespace SALAM {
+
+uint64_t current_store_addr = (uint64_t)0x80ca4240; // Start of the malloc memory
 
 //---------------------------------------------------------------------------//
 //--------- Instruction Base Class ------------------------------------------//
@@ -1917,9 +1921,12 @@ void Load::loadInternal() {
 
 MemoryRequest *Load::createMemoryRequest() {
   Addr memAddr = (operands.front().getPtrRegValue());
-  // std::cerr << "|| Creating load memory request for " << ir_string << " at "
-  // << memAddr << std::endl;
   size_t reqLen = getSizeInBytes();
+  if (is_read && consecutive_store) {
+    current_store_addr -= 8;
+    memAddr = current_store_addr;
+    reqLen = 8;
+  }
   if (dbg)
     DPRINTFS(RuntimeCompute, owner, "|| Launching %s\n", ir_string);
   if (dbg)
@@ -1960,6 +1967,7 @@ void Store::compute() {
 }
 
 MemoryRequest *Store::createMemoryRequest() {
+
   Addr memAddr = (operands.at(1).getPtrRegValue());
   // std::cerr << "|| Creating store memory request for " << ir_stub << ": " <<
   // getUID() << ": " << ir_string << " at " << memAddr << std::endl;
@@ -1967,6 +1975,13 @@ MemoryRequest *Store::createMemoryRequest() {
   size_t reqLen = operands.at(0).getSizeInBytes();
 
   MemoryRequest *req;
+  // If the tape stores should be consecutive, we can artificially create mem requests to 
+  // consecutive addresses.
+  if (is_write && consecutive_store) {
+    memAddr = current_store_addr;
+    reqLen = 8;
+    current_store_addr += 8;
+  }
 
   auto dataRegister = operands.at(0).getOpRegister();
   // Copy data from the register
@@ -2025,11 +2040,6 @@ GetElementPtr::GetElementPtr(uint64_t id, gem5::SimObject *owner, bool dbg,
 void GetElementPtr::initialize(llvm::Value *irval, irvmap *irmap,
                                SALAM::valueListTy *valueList) {
   SALAM::Instruction::initialize(irval, irmap, valueList);
-  auto gep_inst = llvm::dyn_cast<llvm::GetElementPtrInst>(irval);
-  if (gep_inst->getPointerOperand()->getName().contains("malloccache"))
-    std::cerr << "GEP Cache: " << gep_inst->getPointerOperand()->getName().str() << std::endl;
-  
-  // ****** //
   llvm::User *iruser = llvm::dyn_cast<llvm::User>(irval);
   assert(iruser);
   llvm::GetElementPtrInst *GEP = llvm::dyn_cast<llvm::GetElementPtrInst>(irval);
