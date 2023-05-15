@@ -12,6 +12,7 @@ namespace SALAM {
 		std::vector<std::shared_ptr<SALAM::BasicBlock>> bbList;
 		std::vector<std::shared_ptr<SALAM::Value>> arguments;
 		bool top;
+		bool dma = false;
 		unsigned activeInstances = 0;
 		unsigned instanceLimit = 1;
 	public:
@@ -19,6 +20,8 @@ namespace SALAM {
 		void initialize(llvm::Value * irval, irvmap *vmap, SALAM::valueListTy *valueList, std::string topName);
 		bool isTop() { return top; }
 		void setTop(bool isTop) { top = isTop; }
+		void setDMA(bool isDMA) { dma = isDMA; }
+		bool isDMA() { return dma; }
 		virtual bool isFunction() { return true; }
 		std::vector<std::shared_ptr<SALAM::BasicBlock>> * getBBList() { return &bbList; }
 		std::vector<std::shared_ptr<SALAM::Value>> * getArguments() { return & arguments; }

@@ -1,5 +1,6 @@
 #include "hw_defines.h"
-
+#include "../../../common/dma.h"
+extern "C" {
 void top() {
 
 	// Define Device MMRs
@@ -10,7 +11,7 @@ void top() {
 	*MATFLAG = DEV_INIT;
 	// //Poll function for finish
 	while ((*MATFLAG & DEV_INTR) != DEV_INTR);
-
-	
 	return;
+}
+
 }

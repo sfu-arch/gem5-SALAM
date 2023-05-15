@@ -160,29 +160,13 @@ void LLVMInterface::ActiveFunction::handleMallocCall(int size) {
   returned = true;
 }
 
-void handleInstLog(SALAM::Instruction *inst, int id) {
-  return;
-  if (inst)
-    std::cerr << " ID: " << std::dec << inst->getUID() << " : " << id
-              << "Handling reservation: " << inst->getIRString() << std::endl;
-  else
-    std::cerr << "Inst is null" << std::endl;
-}
-
-std::string split(std::string &line, std::string delim) {
-  std::string token = line.substr(0, line.find(delim));
-  line = line.substr(line.find(delim) + 1);
-  return token;
-}
-
 void LLVMInterface::ActiveFunction::handlePop(SALAM::Instruction *inst) {
   std::cerr << "REV Start " << inst->getIRStub() << std::endl;
   owner->bin_hierarchy->pop(inst->push_pop_count);
-  MemoryRequest *mem_req = owner->spad_->SpadAlloc(inst->push_pop_count * 8);
-  if (mem_req) {
-    std::cerr << "Launching pop " << inst->getIRStub()
+  if (MemoryRequest *mem_req = owner->spad_->SpadAlloc(inst->push_pop_count * 8)) {
+      std::cerr << "Launching pop " << inst->getIRStub()
                     << "count: " << mem_req->getLength() << "\n";
-    owner->launchRead(mem_req, this);
+    owner->launchDMAFunction(kSPMStart, mem_req->getAddress(), mem_req->getLength());
   }
   std::cerr << "CycleCounts: " << owner->getCycle() << std::endl;
 }
@@ -311,15 +295,14 @@ void LLVMInterface::ActiveFunction::processQueues() {
 
       if (owner->bin_hierarchy != nullptr) {
         // Making sure that previous pushes are complete.
-        if (inst->is_push_req) {
+        if (inst->is_push_req && inst->ready()) {
           std::cerr << "FWD End" << inst->getIRStub() << "\n";
           int count = inst->push_pop_count;
           owner->bin_hierarchy->push(count);
-          MemoryRequest *mem_req = owner->spad_->SpadAlloc(count * 8);
-          if (mem_req) {
+          if (MemoryRequest *mem_req = owner->spad_->SpadAlloc(count * 8)) {
             std::cerr << "Launching push " << inst->getIRStub()
                     << "count: " << mem_req->getLength() << "\n";
-            owner->launchWrite(mem_req, this);
+            owner->launchDMAFunction(mem_req->getAddress(), kSPMStart, mem_req->getLength());
           }
         } else if (inst->is_pop_req) {
           handlePop(inst.get());
@@ -945,6 +928,8 @@ void LLVMInterface::constructStaticGraph() {
     assert(funcval);
     std::shared_ptr<SALAM::Function> sfunc =
         std::dynamic_pointer_cast<SALAM::Function>(funcval);
+    if (func.getName() == "DmaCopy")
+      sfunc->setDMA(true);
     if (!sfunc.get()) {
       llvm::errs() << "sfunction err: " << func_iter->getName() << "\n";
       continue;
@@ -1534,6 +1519,21 @@ void LLVMInterface::launchTopFunction() {
       "LLVMInterface to the name of the top-level function\n");
 }
 
+void LLVMInterface::launchDMAFunction(gem5::Addr dst, gem5::Addr src, size_t byte_size) {
+  for (auto it = functions.begin(); it != functions.end(); it++) {
+    if ((*it)->isDMA()) {
+      std::vector<std::shared_ptr<SALAM::Value>> &args = *((*it)->getArguments());
+      args[0]->setRegisterValue(dst);
+      args[1]->setRegisterValue(src);
+      args[2]->setRegisterValue(byte_size);
+      std::cerr << "Launching DMA FUNCTION\n";
+
+      launchFunction((*it), nullptr);
+      return;
+    }
+  }
+}
+
 void LLVMInterface::ActiveFunction::launch() {
   // if (DTRACE(Trace)) if (dbg) DPRINTFS(Runtime, owner,  "Trace: %s \n",
   // __PRETTY_FUNCTION__);
@@ -1557,7 +1557,7 @@ void LLVMInterface::ActiveFunction::launch() {
       arg->setRegisterValue(regValue);
       argOffset += argSizeInBytes;
     }
-  } else {
+  } else if (!func->isDMA()) {
     llvm::errs() << "Launching Function: " << func->getIRStub()
                  << " Caller : " << caller->getIRStub() << "\n";
 
@@ -1572,6 +1572,8 @@ void LLVMInterface::ActiveFunction::launch() {
     for (auto i = 0; i < callerArgs.size(); i++) {
       funcArgs.at(i)->setRegisterValue(callerArgs.at(i).getOpRegister());
     }
+  } else {
+        llvm::errs() << "Launching DMA Function: " << func->getIRStub() << "\n";
   }
 
   func->addInstance();
@@ -1583,11 +1585,6 @@ void LLVMInterface::ActiveFunction::launch() {
 std::shared_ptr<SALAM::Instruction> LLVMInterface::createInstruction(
     llvm::Instruction *inst, uint64_t id) {
   last_id = id;
-  int cost = 0;
-  if (cost_map.count(inst->getNameOrAsOperand())) {
-    cost = cost_map.at(inst->getNameOrAsOperand());
-  }
-
   // if (DTRACE(Trace)) DPRINTF(Runtime, "Trace: %s \n", __PRETTY_FUNCTION__);
   uint64_t OpCode = inst->Instruction::getOpcode();
   // if (DTRACE(Trace)) DPRINTF(LLVMInterface, "Switch OpCode [%d]\n", OpCode);

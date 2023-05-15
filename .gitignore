@@ -41,3 +41,5 @@ build.sh
 1.txt
 2.txt
 req.sh
+*.csv
+live_vars.txt

@@ -46,7 +46,7 @@ MemoryRequest *SpadInterface::SpadAlloc(size_t request_size) {
 MemoryRequest *SpadInterface::CreateReadRequest(
     std::shared_ptr<SALAM::Instruction> inst) const {
   gem5::Addr addr = head_ + inst->index * 8;
-  return new MemoryRequest(addr, 8);  // 8 bytes
+  return new MemoryRequest(addr, 8);  // 8 bytes ( We assume all the tape values are double)
 }
 
 MemoryRequest *SpadInterface::CreateWriteRequest(

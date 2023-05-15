@@ -217,6 +217,11 @@ public:
   std::map<std::string, std::vector<uint64_t>> address_map;
   void readAddressMap();
   int getCycle() { return cycle; }
+
+  // Launches a DMA transfer from src to dst. The `dma.h` header must be included in the 
+  // accelerator's source code.
+  void launchDMAFunction(gem5::Addr dst, gem5::Addr src, size_t byte_size);
+
   PARAMS(LLVMInterface);
   LLVMInterface(const LLVMInterfaceParams &p);
   void tick();
