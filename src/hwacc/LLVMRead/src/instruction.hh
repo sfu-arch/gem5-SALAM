@@ -976,6 +976,7 @@ class Store : public Instruction {
         virtual std::shared_ptr<SALAM::Value> createClone() const override { return std::shared_ptr<SALAM::Store>(new SALAM::Store(*this)); }
 
         MemoryRequest * createMemoryRequest() override;
+        MemoryRequest *createSPMMemoryRequest(Addr memAddr);
 };
 
 std::shared_ptr<SALAM::Instruction>

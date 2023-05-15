@@ -34,6 +34,9 @@ SALAM::Value::Value(const Value &copy_val)
     is_pop_req = copy_val.is_pop_req;
     is_read = copy_val.is_read;
     is_write = copy_val.is_write;
+    index = copy_val.index;
+    push_pop_count = copy_val.push_pop_count;
+    is_dereferenceable = copy_val.is_dereferenceable;
     is_reverse = copy_val.is_reverse;
 }
 
@@ -56,6 +59,9 @@ SALAM::Value::Value(std::shared_ptr<SALAM::Value> copy_val)
     is_pop_req = copy_val->is_pop_req;
     is_read = copy_val->is_read;
     is_write = copy_val->is_write;
+    push_pop_count = copy_val->push_pop_count;
+    index = copy_val->index;
+    is_dereferenceable = copy_val->is_dereferenceable;
     is_reverse = copy_val->is_reverse;
 }
 
@@ -76,6 +82,9 @@ SALAM::Value::operator = (Value &copy_val)
     is_pop_req = copy_val.is_pop_req;
     is_read = copy_val.is_read;
     is_write = copy_val.is_write;
+    push_pop_count = copy_val.push_pop_count;
+    index = copy_val.index;
+    is_dereferenceable = copy_val.is_dereferenceable;
     is_reverse = copy_val.is_reverse;
     return *this;
 }

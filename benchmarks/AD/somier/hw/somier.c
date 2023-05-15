@@ -29,8 +29,6 @@ void compute_forces(int n, double *X, double *F)
          #endif
          for (int k=1; k<N-1; k++) {
             {
-               // force_contribution (n, X, F, i, j, k, i-1, j,   k);
-
                double dx, dy, dz, dl, spring_F, FX, FY,FZ;
                int neig_i = i-1;
                int neig_j = j;
@@ -38,7 +36,6 @@ void compute_forces(int n, double *X, double *F)
                dx = X[0*N3+neig_i * N2 + neig_j*N+neig_k] - X[0*N3+i * N2 + j*N+k];
                dy = X[1*N3+neig_i * N2 + neig_j*N+neig_k] - X[1*N3+i * N2 + j*N+k];
                dz = X[2*N3+neig_i * N2 + neig_j*N+neig_k] - X[2*N3+i * N2 + j*N+k];
-               //    dl = sqrt(dx*dx + dy*dy + dz*dz);
                dl = (dx*dx + dy*dy + dz*dz);
                spring_F = 0.25 * spring_K*(dl-1);
                FX = spring_F * dx/dl; 
@@ -49,7 +46,6 @@ void compute_forces(int n, double *X, double *F)
                F[2*N3+neig_i * N2 + neig_j*N+neig_k] += FZ;
             }
             {
-               // force_contribution (n, X, F, i, j, k, i+1, j,   k);
                double dx, dy, dz, dl, spring_F, FX, FY,FZ;
                int neig_i = i+1;
                int neig_j = j;
@@ -57,7 +53,6 @@ void compute_forces(int n, double *X, double *F)
                dx = X[0*N3+neig_i * N2 + neig_j*N+neig_k] - X[0*N3+i * N2 + j*N+k];
                dy = X[1*N3+neig_i * N2 + neig_j*N+neig_k] - X[1*N3+i * N2 + j*N+k];
                dz = X[2*N3+neig_i * N2 + neig_j*N+neig_k] - X[2*N3+i * N2 + j*N+k];
-               //    dl = sqrt(dx*dx + dy*dy + dz*dz);
                dl = (dx*dx + dy*dy + dz*dz);
                spring_F = 0.25 * spring_K*(dl-1);
                FX = spring_F * dx/dl; 
@@ -68,7 +63,6 @@ void compute_forces(int n, double *X, double *F)
                F[2*N3+neig_i * N2 + neig_j*N+neig_k] += FZ;
             }
             {
-               // force_contribution (n, X, F, i, j, k, i,   j-1, k);
                double dx, dy, dz, dl, spring_F, FX, FY,FZ;
                int neig_i = i;
                int neig_j = j-1;
@@ -76,7 +70,6 @@ void compute_forces(int n, double *X, double *F)
                dx = X[0*N3+neig_i * N2 + neig_j*N+neig_k] - X[0*N3+i * N2 + j*N+k];
                dy = X[1*N3+neig_i * N2 + neig_j*N+neig_k] - X[1*N3+i * N2 + j*N+k];
                dz = X[2*N3+neig_i * N2 + neig_j*N+neig_k] - X[2*N3+i * N2 + j*N+k];
-               //    dl = sqrt(dx*dx + dy*dy + dz*dz);
                dl = (dx*dx + dy*dy + dz*dz);
                spring_F = 0.25 * spring_K*(dl-1);
                FX = spring_F * dx/dl; 

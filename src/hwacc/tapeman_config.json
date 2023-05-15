@@ -1,11 +1,11 @@
 {
     "tape": {
-        "enabled": false,
-        "size": 512
+        "enabled": true,
+        "size": 256
     },
     "prefetch": {
         "enabled": false,
         "block_size": 512
     },
-    "sotre_consecutive": false
+    "store_consecutive": false
 }

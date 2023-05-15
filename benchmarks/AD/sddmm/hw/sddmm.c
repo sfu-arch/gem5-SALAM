@@ -30,7 +30,7 @@ void compute(taco_tensor_t *y, taco_tensor_t *a, taco_tensor_t *x, taco_tensor_t
   uint64_t *z_ptrs = (uint64_t*)(z->indptrs);
   int32_t iy = 0;
   for (int32_t i = 0; i < N; i++) {
-
+    // #pragma omp clang loop unroll_count(8)
     for (int64_t ja = a2_pos[i]; ja < a2_pos[(i+1)]; ja++) {
       // for (int32_t k = 0; k < DIMS; k++) {
         int64_t kC = i * N + x->indices[ja];
@@ -55,13 +55,13 @@ void top() {
   // outcode
   uint64_t* a2_pos = (uint64_t*)(A->indptrs);
 
-  for (int i = 0; i < N; i++) {
-    for (int64_t ja = a2_pos[i]; ja < a2_pos[(i+1)]; ja++) {
-      A->indices[ja] = (((i * ja) ^ N)  * 161241) % DATA_SIZE;
-      Z->indices[ja] = (((i * ja * 13) ^ N)  * 1331) % DATA_SIZE;
-      X->indices[ja] = (((i * ja * 17) ^ N)  * 1242141) % DATA_SIZE;
-    }
-  }
+  // for (int i = 0; i < N; i++) {
+  //   for (int64_t ja = a2_pos[i]; ja < a2_pos[(i+1)]; ja++) {
+  //     A->indices[ja] = (((i * ja) ^ N)  * 161241) % DATA_SIZE;
+  //     Z->indices[ja] = (((i * ja * 13) ^ N)  * 1331) % DATA_SIZE;
+  //     X->indices[ja] = (((i * ja * 17) ^ N)  * 1242141) % DATA_SIZE;
+  //   }
+  // }
   taco_tensor_t* A_grad = (taco_tensor_t*)((uint64_t) Z + sizeof(taco_tensor_t));
   taco_tensor_t* Y_grad = (taco_tensor_t*)((uint64_t) A_grad + sizeof(taco_tensor_t));
   taco_tensor_t* X_grad = (taco_tensor_t*)((uint64_t) Y_grad + sizeof(taco_tensor_t));

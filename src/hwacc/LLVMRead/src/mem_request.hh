@@ -44,6 +44,7 @@ class MemoryRequest {
     uint8_t * getBuffer() { return buffer; }
     Addr getAddress() { return address; }
     std::string printBuffer();
+    size_t getLength() { return length; }
 };
 
 #endif //__MEM_REQUEST_HH__

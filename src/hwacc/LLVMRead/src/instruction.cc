@@ -1967,13 +1967,52 @@ void Store::compute() {
 }
 
 MemoryRequest *Store::createMemoryRequest() {
+  Addr memAddr = (operands.at(1).getPtrRegValue());;
+  size_t reqLen = operands.at(0).getSizeInBytes();;
+  MemoryRequest *req;
+  // If the tape stores should be consecutive, we can artificially create mem requests to 
+  // consecutive addresses.
+  if (is_write && consecutive_store) {
+    memAddr = current_store_addr;
+    reqLen = 8;
+    current_store_addr += 8;
+  }
 
-  Addr memAddr = (operands.at(1).getPtrRegValue());
-  // std::cerr << "|| Creating store memory request for " << ir_stub << ": " <<
-  // getUID() << ": " << ir_string << " at " << memAddr << std::endl;
+  auto dataRegister = operands.at(0).getOpRegister();
+  // Copy data from the register
+  if (dataRegister->isPtr()) {
+    uint64_t regData = dataRegister->getPtrData();
+    req = new MemoryRequest(memAddr, (uint8_t *)&regData, reqLen);
+  } else {
+#if USE_LLVM_AP_VALUES
+    llvm::APInt regAPData;
+    if (dataRegister->isInt()) {
+      regAPData = (dataRegister->getIntData());
+    } else {
+      regAPData = dataRegister->getFloatData().bitcastToAPInt();
+    }
+    req = new MemoryRequest(memAddr, regAPData.getRawData(), reqLen);
+#else
+    uint64_t regData;
+    if (dataRegister->isInt()) {
+      regData = dataRegister->getIntData();
+    } else {
+      regData = dataRegister->getFloatData();
+    }
+    req = new MemoryRequest(memAddr, (uint8_t *)&regData, reqLen);
+#endif
+    if (dbg)
+      DPRINTFS(RuntimeCompute, owner, "|| Launching %s\n", ir_string);
+    if (dbg)
+      DPRINTFS(RuntimeCompute, owner, "|| Addr[%x] Size[%i]\n", memAddr,
+               reqLen);
+  }
 
-  size_t reqLen = operands.at(0).getSizeInBytes();
+  return req;
+}
 
+MemoryRequest *Store::createSPMMemoryRequest(Addr memAddr) {
+  size_t reqLen = 8;
   MemoryRequest *req;
   // If the tape stores should be consecutive, we can artificially create mem requests to 
   // consecutive addresses.

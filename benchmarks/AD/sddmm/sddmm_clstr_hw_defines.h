@@ -13,7 +13,7 @@
 #define SDDMM 0x10020080
 #define R 500
 #define C 500
-#define N 303814
+#define N 100000
 #define DATA_SIZE 2006126
 
 typedef enum { taco_mode_dense, taco_mode_sparse } taco_mode_t;

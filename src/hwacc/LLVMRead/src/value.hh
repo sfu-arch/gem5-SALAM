@@ -37,6 +37,8 @@ class Value
         bool is_pop_req = false;
         bool is_read = false;
         bool is_write = false;
+        int index = 0;
+        bool is_dereferenceable = false;
         uint32_t push_pop_count = 0;
         bool is_unwrap = false;
         std::shared_ptr<SALAM::Register> returnReg;

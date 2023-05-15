@@ -39,6 +39,7 @@
 #include "hwacc/LLVMRead/src/operand.hh"
 #include "hwacc/compute_unit.hh"
 #include "params/LLVMInterface.hh"
+#include "spad_interface.hh"
 
 class LLVMInterface : public ComputeUnit {
 private:
@@ -48,7 +49,7 @@ private:
   int32_t clock_period;
   int cycle;
   int stalls;
-
+  int waitCycles = 0;
   bool running;
   bool loadOpScheduled;
   bool storeOpScheduled;
@@ -69,7 +70,7 @@ private:
   std::chrono::high_resolution_clock::time_point simStop;
   std::chrono::high_resolution_clock::time_point setupStop;
   std::chrono::high_resolution_clock::time_point timeStart;
-
+  public:
   class ActiveFunction {
     friend class LLVMInterface;
 
@@ -96,12 +97,19 @@ private:
     }
 
     std::map<Addr, std::shared_ptr<SALAM::Instruction>> activeWrites;
+    std::map<Addr, Tick> activeWriteCycle;
+
     inline void trackWrite(Addr writeAddr,
                            std::shared_ptr<SALAM::Instruction> writeInst) {
       activeWrites.insert({writeAddr, writeInst});
+      activeWriteCycle.insert({writeAddr, owner->cycle});
     }
     inline void untrackWrite(uint64_t writeAddr) {
       auto it = activeWrites.find(writeAddr);
+      if (it != activeWrites.end() && it->second->is_write) {
+        owner->waitCycles += owner->cycle - activeWriteCycle.find(writeAddr)->second;
+        activeWriteCycle.erase(writeAddr);
+      }
       if (it != activeWrites.end())
         activeWrites.erase(it);
     }
@@ -148,6 +156,7 @@ private:
       lockstep = (owner->getLockstepStatus());
       dbg = owner->debug();
     }
+
     // ADDED BY ME
     bin::FixedQueue<bin::SyncInfo, 2> sync_queue_;
     void handlePushPopDependency(std::shared_ptr<SALAM::Instruction> inst);
@@ -202,6 +211,7 @@ protected:
   // virtual bool debug() { return true; }
 public:
   // ADDED BY ME
+  SpadInterface *spad_;
   bool binning = false;
   bin::BinHierarchy *bin_hierarchy = nullptr;
   std::map<std::string, std::vector<uint64_t>> address_map;
@@ -226,6 +236,8 @@ public:
   void endFunction(ActiveFunction *afunc);
   void launchRead(MemoryRequest *memReq);
   void launchRead(MemoryRequest *memReq, ActiveFunction *func);
+  
+  void launchWrite(MemoryRequest *memReq);
   void launchWrite(MemoryRequest *memReq, ActiveFunction *func);
   std::shared_ptr<SALAM::Instruction> createInstruction(llvm::Instruction *inst,
                                                         uint64_t id);
