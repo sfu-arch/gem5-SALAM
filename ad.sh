@@ -1,4 +1,11 @@
 #!/bin/bash
+
+# Define colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No color
+BULLET='\xE2\x80\xA2' # Unicode character for bullet point
+
 FLAGS=""
 
 BENCH=""
@@ -50,6 +57,25 @@ if [ "${BENCH}" == "" ]; then
 	exit 2
 fi
 
+python3 ad_benchmark_verifier.py "benchmarks/AD/${BENCH}"
+if [ $? -ne 0 ]; then
+	echo -e "${RED} ${BULLET} Python validator failed. Exiting.${NC}"
+    exit 1
+else
+	echo -e "${GREEN} ${BULLET} Python validator passed.${NC}"
+fi
+
+cd $M5_PATH/benchmarks/AD/$BENCH/hw && make -j
+if [ $? -ne 0 ]; then
+	echo -e "${RED} ${BULLET} Makefile failed. Exiting.${NC}"
+    exit 1
+else
+	echo -e "${GREEN} ${BULLET} Makefile passed.${NC}"
+fi
+cd .. && make -j
+cd $M5_PATH
+${M5_PATH}/SALAM-Configurator/systembuilder.py --sysName $BENCH --benchDir "benchmarks/AD/${BENCH}"
+
 OUTDIR=$M5_PATH/BM_ARM_OUT/AD/$BENCH
 
 if [ "${DEBUG}" == "true" ]; then
@@ -92,8 +118,6 @@ RUN_SCRIPT="$BINARY $DEBUG_FLAGS --outdir=$OUTDIR \
 			configs/SALAM/generated/fs_$BENCH.py $SYS_OPTS \
 			--accpath=$M5_PATH/benchmarks/AD \
 			--accbench=$BENCH $CACHE_OPTS"
-
-${M5_PATH}/SALAM-Configurator/systembuilder.py --sysName $BENCH --benchDir "benchmarks/AD/${BENCH}"
 
 
 PY_FILE_PATH="/localhome/mha157/new_salam/gem5-SALAM/configs/SALAM/generated/$BENCH.py"

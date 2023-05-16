@@ -151,6 +151,7 @@ def genHeaderFiles(headerList, clusters):
             with open(workingDirectory + cluster.name  + "_hw_defines.h", 'w') as f:
                 currentHeader.append("//BEGIN GENERATED CODE\n")
                 currentHeader.append("//Cluster: " + cluster.name.upper() + "\n")
+                currentHeader.append("#include \"../../common/dma.h\"\n")
                 for dma in cluster.dmas:
                     if dma.dmaType == "NonCoherent":
                         currentHeader.append("//" + dma.dmaType + "DMA" + "\n")
