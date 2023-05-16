@@ -10,10 +10,9 @@ declare -a CACHE_SIZES=(16384)
 
 # BIN_SCALES=(16 16 8 4 2)
 # MODES=("ad" "orig")
-MODES=("orig")
+MODES=("ad")
 
 BIN_CONFIG_PATH="/localhome/mha157/new_salam/gem5-SALAM/src/hwacc/bin_config.txt"
-# PY_FILE_PATH="/localhome/mha157/new_salam/gem5-SALAM/1.txt"
 
 while getopts ":b:f:vdp" opt; do
 	case $opt in

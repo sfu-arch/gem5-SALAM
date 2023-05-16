@@ -125,11 +125,22 @@ Devices operate in the physical memory address space.
 5. Run the system_validation file.
 
 ## How to run ad benchmarks?
+### Before running:
+Make sure:
+- The benchmark folder contains `config.yml`.
+    - The `config.yml` must have a `SPM`-type variable for the SPAD. 
+    - The accelerator in `config.yml` must have `LocalSlaves` set to `LocalBus` to access the DMA MMRs.
+- The accelerator source code must include the `#include "benchmarks/common/dma.h"` so that we can call the `DmaCopy()`.
+
+Look at `spmv` benchmark for more details.
+
 run:
 ```
 ./ad.sh -b $benchmark
 ```
 For example:
 ```
-./ad.sh -b gravity
+./ad.sh -b spmv
 ```
+
+Note that the `$benchmark_clstr_hw_defines.h` and `configs/SALAM/generated/$benchmark.py` will be overwritten each time you run `./ad.sh` because it is running `systembuilder.py`. 
