@@ -7,6 +7,7 @@
 #include <math.h>
 #include <inttypes.h>
 #include <string.h>
+#include "../../../common/dma.h"
 
 extern int enzyme_const;
 template<typename Return, typename... T>
@@ -22,9 +23,9 @@ Return __enzyme_autodiff(T...);
 #ifdef N
 #define ROWS N
 #else
-#define ROWS 32
+#define ROWS 1
 #endif
-#define COLS 128
+#define COLS 32
 #define MIN(a, b) ((a)<=(b) ? (a) : (b))
 
 extern "C" {
@@ -40,7 +41,7 @@ void run(double *src, double *wall, double *dst)
             temp = src;
             src = dst;
             dst = temp;
-#pragma clang loop unroll_count(128)
+#pragma clang loop unroll_count(COLS)
             for(int n = 0; n < COLS; n++){
               min = src[t * COLS + n];
               if (n > 0)

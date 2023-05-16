@@ -12,7 +12,7 @@ volatile unsigned flag;
 #define DEVINIT	0x01
 #define DEVINTR	0x04
 extern "C" {
-void DmaCopy(uint32_t *dst, uint32_t *src, int len) {
+inline void DmaCopy(uint32_t *dst, uint32_t *src, int len) {
 
     volatile uint8_t  * DmaFlags   = (uint8_t  *)(0x10020000);
     volatile uint64_t * DmaRdAddr  = (uint64_t *)(0x10020001);

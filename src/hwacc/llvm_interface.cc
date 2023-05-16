@@ -171,6 +171,17 @@ void LLVMInterface::ActiveFunction::handlePop(SALAM::Instruction *inst) {
   std::cerr << "CycleCounts: " << owner->getCycle() << std::endl;
 }
 
+void LLVMInterface::ActiveFunction::handlePush(SALAM::Instruction *inst) {
+  std::cerr << "FWD End" << inst->getIRStub() << "\n";
+  int count = inst->push_pop_count;
+  owner->bin_hierarchy->push(count);
+  if (MemoryRequest *mem_req = owner->spad_->SpadAlloc(count * 8)) {
+    std::cerr << "Launching push " << inst->getIRStub()
+            << "count: " << mem_req->getLength() << "\n";
+    owner->launchDMAFunction(mem_req->getAddress(), kSPMStart, mem_req->getLength());
+  }
+}
+
 // Find push/pop instructions and mark them as dependencies. This makes them
 // behave like barriers.
 void LLVMInterface::ActiveFunction::handlePushPopDependency(
@@ -295,15 +306,8 @@ void LLVMInterface::ActiveFunction::processQueues() {
 
       if (owner->bin_hierarchy != nullptr) {
         // Making sure that previous pushes are complete.
-        if (inst->is_push_req && inst->ready()) {
-          std::cerr << "FWD End" << inst->getIRStub() << "\n";
-          int count = inst->push_pop_count;
-          owner->bin_hierarchy->push(count);
-          if (MemoryRequest *mem_req = owner->spad_->SpadAlloc(count * 8)) {
-            std::cerr << "Launching push " << inst->getIRStub()
-                    << "count: " << mem_req->getLength() << "\n";
-            owner->launchDMAFunction(mem_req->getAddress(), kSPMStart, mem_req->getLength());
-          }
+        if (inst->is_push_req) {
+          handlePush(inst.get());
         } else if (inst->is_pop_req) {
           handlePop(inst.get());
         } else if (inst->is_read && inst->ready()) {
@@ -336,10 +340,11 @@ void LLVMInterface::ActiveFunction::processQueues() {
             queue_iter = reservation.erase(queue_iter);
           } else if ((inst)->isLoad()) {
 
-            if (inst->is_dereferenceable) { // TODO(@milad): This is a hack to get around the Enzyme's indirect cache access.
-              inst->commit();
-              queue_iter = reservation.erase(queue_iter);
-            } else if (inst->isLoadingInternal()) {  // RAW protection to ensure a writeback finishes before reading that
+            // if (inst->is_dereferenceable) { // TODO(@milad): This is a hack to get around the Enzyme's indirect cache access.
+            //   inst->commit();
+            //   queue_iter = reservation.erase(queue_iter);
+            // } else 
+            if (inst->isLoadingInternal()) {  // RAW protection to ensure a writeback finishes before reading that
             // location
               launchRead(inst);
               if (dbg)

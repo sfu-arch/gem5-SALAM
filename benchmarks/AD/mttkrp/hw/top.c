@@ -1,4 +1,9 @@
 #include "hw_defines.h"
+#include "../../../common/dma.h"
+
+extern "C" {
+	void top();
+}
 
 void top() {
 

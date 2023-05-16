@@ -10,7 +10,7 @@ declare -a CACHE_SIZES=(16384)
 
 # BIN_SCALES=(16 16 8 4 2)
 # MODES=("ad" "orig")
-MODES=("ad")
+MODES=("orig")
 
 BIN_CONFIG_PATH="/localhome/mha157/new_salam/gem5-SALAM/src/hwacc/bin_config.txt"
 # PY_FILE_PATH="/localhome/mha157/new_salam/gem5-SALAM/1.txt"
@@ -94,7 +94,7 @@ RUN_SCRIPT="$BINARY $DEBUG_FLAGS --outdir=$OUTDIR \
 			--accpath=$M5_PATH/benchmarks/AD \
 			--accbench=$BENCH $CACHE_OPTS"
 
-# ${M5_PATH}/SALAM-Configurator/systembuilder.py --sysName $BENCH --benchDir "benchmarks/AD/${BENCH}"
+${M5_PATH}/SALAM-Configurator/systembuilder.py --sysName $BENCH --benchDir "benchmarks/AD/${BENCH}"
 
 
 PY_FILE_PATH="/localhome/mha157/new_salam/gem5-SALAM/configs/SALAM/generated/$BENCH.py"

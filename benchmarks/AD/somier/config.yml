@@ -25,20 +25,11 @@ acc_cluster:
       Debug: False
       PIOSize: 1
       PIOMaster: LocalBus
+      LocalSlaves: LocalBus
     - Var:
       - Name: MAT
         Type: SPM
         Size: 800000
-        Ports: 2
-    - Var:
-      - Name: VEC
-        Type: SPM
-        Size: 800
-        Ports: 2
-    - Var:
-      - Name: OUT
-        Type: SPM
-        Size: 1000
         Ports: 2
 hw_config:
   top:

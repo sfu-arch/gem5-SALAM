@@ -7,7 +7,8 @@
 #include <math.h>
 #include <inttypes.h>
 #include <string.h>
-// #include "../autogen.h"
+#include "../../../common/dma.h"
+#include "../defines.h"
 
 extern "C" {
     void top();

@@ -158,7 +158,7 @@ class AccCluster:
         lines.append("	external_range = [AddrRange(0x00000000, local_low-1), AddrRange(local_high+1, 0xFFFFFFFF)]")
         lines.append("	system.iobus.mem_side_ports = clstr.local_bus.cpu_side_ports")
         # Need to define l2coherency in the YAML file?
-        lines.append("	clstr._connect_caches(system, options, l2coherent=True)")
+        lines.append("	clstr._connect_caches(system, options, l2coherent=True, cache_size=\"16384B\")")
         lines.append("	gic = system.realview.gic")
         lines.append("")
 
@@ -214,7 +214,6 @@ class Accelerator:
                     lines.append("clstr." + self.name + ".local = clstr.local_bus.cpu_side_ports")
                 else:
                     lines.append("clstr." + self.name + ".local = clstr." + connection.lower() + ".pio")
-
         # Assign PIO Masters
         for master in self.pioMasters:
             if "LocalBus" in master:
@@ -230,6 +229,9 @@ class Accelerator:
             lines.append("clstr." + self.name + ".stream = clstr." + outCon.lower() + ".stream_out")
 
         lines.append("clstr." + self.name + ".enable_debug_msgs = " + str(self.debug))
+        # Add acp (accelerator coherency port)
+        lines.append("clstr." + self.name + ".acp = clstr.coherency_bus.cpu_side_ports")
+        lines.append("clstr." + self.name + ".acp = clstr.coherency_bus.cpu_side_ports")
         lines.append("")
 
         # Add scratchpad variables

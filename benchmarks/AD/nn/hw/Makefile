@@ -8,7 +8,7 @@
 # 	rm -f *.ll
 N?=10
 WORKING_SET_SIZE=28
-BIN_SIZE?=256
+BIN_SIZE?=4
 MAIN_FILE=nn
 KERN=$(MAIN_FILE).c top.c
 build: $(FILES)

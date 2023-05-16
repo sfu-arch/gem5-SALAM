@@ -7,6 +7,7 @@
 #include <math.h>
 #include <inttypes.h>
 #include <string.h>
+#include "../../../common/dma.h"
 
 #define MNIST_LABEL_MAGIC 0x00000801
 #define MNIST_IMAGE_MAGIC 0x00000803

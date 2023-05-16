@@ -7,7 +7,7 @@
 #include <math.h>
 #include <inttypes.h>
 #include <string.h>
-
+#include "../../../common/dma.h"
 
 extern "C" {
     void top();

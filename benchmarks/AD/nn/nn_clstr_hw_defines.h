@@ -9,7 +9,5 @@
 #define TOP 0x10020040
 //Accelerator: NN
 #define NN 0x10020080
-#define MAT 0x100200c0
-#define VEC 0x100e3600
-#define OUT 0x101a6b40
+#define SPAD 0x100200c0
 //END GENERATED CODE

@@ -9,4 +9,5 @@
 #define TOP 0x10020040
 //Accelerator: MTTKRP
 #define MTTKRP 0x10020080
+#define SPAD 0x100200c0
 //END GENERATED CODE

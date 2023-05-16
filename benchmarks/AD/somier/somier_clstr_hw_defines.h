@@ -10,6 +10,4 @@
 //Accelerator: SOMIER
 #define SOMIER 0x10020080
 #define MAT 0x100200c0
-#define VEC 0x100e3600
-#define OUT 0x100e3940
 //END GENERATED CODE

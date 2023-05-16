@@ -163,6 +163,9 @@ private:
     void handleTloadPopDependency(std::shared_ptr<SALAM::Instruction> inst);
 
     void handlePop(SALAM::Instruction *inst);
+    void handlePush(SALAM::Instruction *inst);
+    void handleSPADAlloc(SALAM::Instruction *inst);
+    
     void handleMallocCall(int size);
     bool isMalloc(SALAM::Value *val) {
       return val->getIRStub().find("malloc") != std::string::npos;
