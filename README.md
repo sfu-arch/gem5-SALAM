@@ -144,3 +144,17 @@ For example:
 ```
 
 Note that the `$benchmark_clstr_hw_defines.h` and `configs/SALAM/generated/$benchmark.py` will be overwritten each time you run `./ad.sh` because it is running `systembuilder.py`. 
+
+# FAQ
+Some bugs might appear during the compile time or runtime. We mention some of them and how to resolve them.
+## Error 1:
+```bash
+build/ARM/hwacc/llvm_interface.cc:1522: panic: No function marked as top-level. Set the top_name parameter for your LLVMInterface to the name of the top-level function
+```
+### Solution:
+The compiler changed the name of the `top()` function, so gem5-Salam can not it. You can verify this by looking at the `top.ll` created in the `hw` directory. To solve this, add the following lines before the definition of the `top()` function in the `top.c` file. This prevents the compiler to rename this function.
+```C
+extern "C" {
+    void top();
+}
+```
