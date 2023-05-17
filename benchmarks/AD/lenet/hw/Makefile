@@ -7,7 +7,7 @@
 # clean:
 # 	rm -f *.ll
 N?=1
-BIN_SIZE?=256
+BIN_SIZE?=2
 MAIN_FILE=alexnet
 KERN=$(MAIN_FILE).c top.c
 build: $(FILES)
