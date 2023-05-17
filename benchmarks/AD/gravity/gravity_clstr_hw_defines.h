@@ -1,5 +1,6 @@
 //BEGIN GENERATED CODE
 //Cluster: GRAVITY_CLSTR
+#include "../../common/dma.h"
 //NonCoherentDMA
 #define DMA_Flags 0x10020000
 #define DMA_RdAddr 0x10020001
@@ -9,4 +10,5 @@
 #define TOP 0x10020040
 //Accelerator: GRAVITY
 #define GRAVITY 0x10020080
+#define SPAD 0x100200c0
 //END GENERATED CODE

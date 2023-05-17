@@ -9,7 +9,7 @@
 #include <string.h>
 
 #ifndef N
-#define N 128
+#define N 512
 #endif
 #define HALFN N/2
 extern "C" {

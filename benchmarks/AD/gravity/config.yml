@@ -25,6 +25,12 @@ acc_cluster:
       Debug: False
       PIOSize: 1
       PIOMaster: LocalBus
+      LocalSlaves: LocalBus
+    - Var:
+      - Name: SPAD
+        Type: SPM
+        Size: 800000
+        Ports: 2
 hw_config:
   top:
   gravity:
