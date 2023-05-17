@@ -1,4 +1,3 @@
-from distutils.command.config import config
 import m5
 from m5.objects import *
 from m5.util import *
@@ -41,7 +40,6 @@ def AccConfig(acc, bench_file, config_file):
             current_acc = document[0]['Name'] + '_' + benchname 
             if(benchPath[9] == document[0]['Name']):
                 print(current_acc + " Profile Loaded")
-                # print(yaml_inst_list['hw_config'][benchname])
                 inst_list = yaml_inst_list['hw_config'][current_acc]['instructions'].keys()
                 for instruction in inst_list:
                     setattr(acc.hw_interface.cycle_counts, instruction, yaml_inst_list['hw_config'][current_acc]['instructions'][instruction]['runtime_cycles'])

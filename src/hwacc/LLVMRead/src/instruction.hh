@@ -32,6 +32,7 @@ class Instruction : public Value
         uint64_t currentCycle;
         uint64_t functional_unit = 0;
         HWInterface* hw_interface;
+
     protected:
         // Operands
         std::vector<SALAM::Operand> operands;
