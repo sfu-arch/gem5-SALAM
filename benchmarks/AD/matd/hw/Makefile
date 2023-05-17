@@ -7,7 +7,7 @@
 # clean:
 # 	rm -f *.ll
 N?=1000
-BIN_SIZE?=256
+BIN_SIZE?=1
 MAIN_FILE=matd
 KERN=$(MAIN_FILE).c top.c
 build: $(FILES)

@@ -26,7 +26,7 @@ inline double matvec_real(double* mat, double* vec) {
 // #pragma clang loop unroll(full)
   for(int i=0; i<M; i++) {
     out[i] = 0;
-#pragma clang loop unroll_count(128)
+// #pragma clang loop unroll_count(128)
     for(int j=0; j<N; j++) {
         out[i] += mat[i*M+j] * vec[j];
     }
