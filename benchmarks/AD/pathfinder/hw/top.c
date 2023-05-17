@@ -1,5 +1,9 @@
 #include "hw_defines.h"
 
+extern "C" {
+	void top();
+}
+
 void top() {
 
 	// Define Device MMRs

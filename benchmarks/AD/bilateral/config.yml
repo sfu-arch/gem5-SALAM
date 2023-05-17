@@ -24,7 +24,13 @@ acc_cluster:
       ConfigPath: benchmarks/AD/bilateral/hw/bilateral.ini
       Debug: False
       PIOSize: 10
+      LocalSlaves: LocalBus
       PIOMaster: LocalBus
+    - Var:
+      - Name: SPAD
+        Type: SPM
+        Size: 800000
+        Ports: 2
 hw_config:
   top:
   bilateral:

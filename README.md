@@ -152,7 +152,8 @@ Some bugs might appear during the compile time or runtime. We mention some of th
 build/ARM/hwacc/llvm_interface.cc:1522: panic: No function marked as top-level. Set the top_name parameter for your LLVMInterface to the name of the top-level function
 ```
 ### Solution:
-The compiler changed the name of the `top()` function, so gem5-Salam can not it. You can verify this by looking at the `top.ll` created in the `hw` directory. To solve this, add the following lines before the definition of the `top()` function in the `top.c` file. This prevents the compiler to rename this function.
+gem5-Salam can not find the top function because it is not declared in the source file or has been renamed by the compiler. You can verify this by looking at the `.ll` files created in the `hw` directory. If you have multiple `.c` files, you have to declare the top in all of them. To solve this issue, add the following lines in all of the `.c` files in the `hw` directory. This prevents the compiler to rename this function.
+
 ```C
 extern "C" {
     void top();

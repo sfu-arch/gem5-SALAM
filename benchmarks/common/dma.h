@@ -3,10 +3,12 @@
 
 #define MMR_ADDR    0x2ff00000
 
+#include <inttypes.h>
+
 volatile char * FLAGS = (char *)(MMR_ADDR);
-volatile size_t * SRC = (size_t *)(MMR_ADDR+1);
-volatile size_t * DST = (size_t *)(MMR_ADDR+9);
-volatile int * LEN = (int *)(MMR_ADDR+17);
+// volatile size_t * SRC = (size_t *)(MMR_ADDR+1);
+// volatile size_t * DST = (size_t *)(MMR_ADDR+9);
+// volatile int * LEN = (int *)(MMR_ADDR+17);
 volatile unsigned flag;
 
 #define DEVINIT	0x01

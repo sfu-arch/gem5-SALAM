@@ -1,4 +1,3 @@
-#include "../bilateral_clstr_hw_defines.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -7,7 +6,7 @@
 #include <math.h>
 #include <inttypes.h>
 #include <string.h>
-
+#include "../bilateral_clstr_hw_defines.h"
 
 extern "C" {
     void top();
