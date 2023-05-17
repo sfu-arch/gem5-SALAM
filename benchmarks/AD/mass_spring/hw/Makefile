@@ -8,7 +8,7 @@
 # 	rm -f *.ll
 N?=32
 BIN_SIZE?=5
-UNROLL_COUNT?=32
+UNROLL_COUNT?=1
 MAIN_FILE=mass_spring
 KERN=$(MAIN_FILE).c top.c
 build: $(FILES)

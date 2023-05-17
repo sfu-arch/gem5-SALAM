@@ -8,13 +8,13 @@
 #include <inttypes.h>
 #include <string.h>
 
-extern int enzyme_const;
-template<typename Return, typename... T>
-Return __enzyme_autodiff(T...);
-
 extern "C" {
     void top();
 }
+
+extern int enzyme_const;
+template<typename Return, typename... T>
+Return __enzyme_autodiff(T...);
 
 #define N_SPRINGS 16
 #define N_OBJECTS 2*N_SPRINGS
