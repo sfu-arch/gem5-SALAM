@@ -159,13 +159,10 @@ private:
 
     // ADDED BY ME
     bin::FixedQueue<bin::SyncInfo, 2> sync_queue_;
-    void handlePushPopDependency(std::shared_ptr<SALAM::Instruction> inst);
+    void handleBoundaryDependecy(std::shared_ptr<SALAM::Instruction> inst);
     void handleTloadPopDependency(std::shared_ptr<SALAM::Instruction> inst);
 
-    void handlePop(SALAM::Instruction *inst);
-    void handlePush(SALAM::Instruction *inst);
-    void handleSPADAlloc(SALAM::Instruction *inst);
-    
+    void handleSpadAlloc(std::shared_ptr<SALAM::SpadAllocInst> inst);
     void handleMallocCall(int size);
     bool isMalloc(SALAM::Value *val) {
       return val->getIRStub().find("malloc") != std::string::npos;

@@ -159,38 +159,28 @@ void LLVMInterface::ActiveFunction::handleMallocCall(int size) {
   func->removeInstance();
   returned = true;
 }
-
-void LLVMInterface::ActiveFunction::handlePop(SALAM::Instruction *inst) {
-  std::cerr << "REV Start " << inst->getIRStub() << std::endl;
-  owner->bin_hierarchy->pop(inst->push_pop_count);
-  if (MemoryRequest *mem_req = owner->spad_->SpadAlloc(inst->push_pop_count * 8)) {
-      std::cerr << "Launching pop " << inst->getIRStub()
+void LLVMInterface::ActiveFunction::handleSpadAlloc(std::shared_ptr<SALAM::SpadAllocInst> inst) {
+  if (MemoryRequest *mem_req = owner->spad_->SpadAlloc(inst->getAllocSize() * 8)) {
+      if (!found_invert) {
+        std::cerr << "Launching push " << inst->getIRStub()
                     << "count: " << mem_req->getLength() << "\n";
+      } else {
+        std::cerr << "Launching pop " << inst->getIRStub()
+                    << "count: " << mem_req->getLength() << "\n";
+      }
     owner->launchDMAFunction(kSPMStart, mem_req->getAddress(), mem_req->getLength());
-  }
-  std::cerr << "CycleCounts: " << owner->getCycle() << std::endl;
-}
-
-void LLVMInterface::ActiveFunction::handlePush(SALAM::Instruction *inst) {
-  std::cerr << "FWD End" << inst->getIRStub() << "\n";
-  int count = inst->push_pop_count;
-  owner->bin_hierarchy->push(count);
-  if (MemoryRequest *mem_req = owner->spad_->SpadAlloc(count * 8)) {
-    std::cerr << "Launching push " << inst->getIRStub()
-            << "count: " << mem_req->getLength() << "\n";
-    owner->launchDMAFunction(mem_req->getAddress(), kSPMStart, mem_req->getLength());
   }
 }
 
 // Find push/pop instructions and mark them as dependencies. This makes them
 // behave like barriers.
-void LLVMInterface::ActiveFunction::handlePushPopDependency(
+void LLVMInterface::ActiveFunction::handleBoundaryDependecy(
     std::shared_ptr<SALAM::Instruction> inst) {
   auto queue_iter = reservation.rbegin();
   while ((queue_iter != reservation.rend())) {
     auto queued_inst = *queue_iter;
     // Look at each instruction in runtime queue once
-    if (queued_inst->is_pop_req) {
+    if (queued_inst->isBarrier() || queued_inst->isSpadAlloc()) {
       std::cerr << "Making inst " << inst->getIRString()
                 << " dependant on previous push/pops: "
                 << queue_iter->get()->getIRString() << "\n";
@@ -306,10 +296,11 @@ void LLVMInterface::ActiveFunction::processQueues() {
 
       if (owner->bin_hierarchy != nullptr) {
         // Making sure that previous pushes are complete.
-        if (inst->is_push_req) {
-          handlePush(inst.get());
-        } else if (inst->is_pop_req) {
-          handlePop(inst.get());
+        if (inst->isSpadAlloc() && inst->ready()) {
+          handleSpadAlloc(std::dynamic_pointer_cast<SALAM::SpadAllocInst>(inst));
+          inst->commit();
+          queue_iter = reservation.erase(queue_iter);
+          continue;
         } else if (inst->is_read && inst->ready()) {
           // DO not delete the following line.
           std::cerr << "is_read" << "\n";
@@ -566,8 +557,10 @@ LLVMInterface::ActiveFunction::findDynamicDeps(
       // If the instruction is a barrier, it depends on all the previous
       // instructions.
       for (auto &i : reservation) {
-        inst->addRuntimeDependency(i);
-        i->addRuntimeUser(inst);
+        if (inst->is_read || inst->is_write || inst->isBarrier() || inst->isSpadAlloc()) {
+          inst->addRuntimeDependency(i);
+          i->addRuntimeUser(inst);
+        }
       }
       for (auto &r : readQueue) {
         inst->addRuntimeDependency(r.second);
@@ -581,7 +574,7 @@ LLVMInterface::ActiveFunction::findDynamicDeps(
       // If the instruction is not a barrier, it only depends on the previous
       // barrier.
       for (auto &i : reservation) {
-        if (i->isBarrier()) {
+        if (i->isSpadAlloc()) {
           inst->addRuntimeDependency(i);
           i->addRuntimeUser(inst);
           break;
@@ -594,7 +587,7 @@ LLVMInterface::ActiveFunction::findDynamicDeps(
   // // dep_uids.push_back(inst->getUID());
   if (owner->bin_hierarchy != nullptr) {
     // Make all pop request dependant on previous pops
-    if (inst->is_pop_req) handlePushPopDependency(inst);
+    if (inst->isBarrier() || inst->isSpadAlloc()) handleBoundaryDependecy(inst);
     if (inst->is_read) handleTloadPopDependency(inst);
   }
   // Find dependencies currently in queues
@@ -862,19 +855,6 @@ void LLVMInterface::constructStaticGraph() {
         if (!sinst.get()) {
           llvm::errs() << "instruction err: " << inst_iter->getName() << "\n";
           continue;
-        }
-        if (inst_iter->hasMetadata("push")) {
-          sinst->is_push_req = true;
-          auto *N = inst_iter->getMetadata("size");
-          auto *S = llvm::dyn_cast<llvm::MDString>(N->getOperand(0));
-          sinst->push_pop_count = stoi(S->getString().str());
-        }
-        if (inst_iter->hasMetadata("pop")) {
-
-          sinst->is_pop_req = true;
-          auto *N = inst_iter->getMetadata("size");
-          auto *S = llvm::dyn_cast<llvm::MDString>(N->getOperand(0));
-          sinst->push_pop_count = std::stoi(S->getString().str());
         }
         sinst->is_dereferenceable = inst_iter->hasMetadata("dereferenceable");
         
@@ -1812,12 +1792,15 @@ std::shared_ptr<SALAM::Instruction> LLVMInterface::createInstruction(
                                       functional_unit);
       break;
     case llvm::Instruction::Alloca: {
-      if (inst->hasMetadata("push") || inst->hasMetadata("pop")) {
+      if (inst->hasMetadata("Barrier")) {
         return SALAM::createBarrierInst(id, this, debug(), OpCode,
                                         hw->cycle_counts->load_inst,
                                         functional_unit);
-        break;
-      }
+      } else if (inst->hasMetadata("SpadAlloc")) {
+        return SALAM::createSpadAllocInst(id, this, debug(), OpCode,
+                                          hw->cycle_counts->load_inst,
+                                          functional_unit);
+      } 
     }
     default: {
       warn("Tried to create instance of undefined instruction type!");

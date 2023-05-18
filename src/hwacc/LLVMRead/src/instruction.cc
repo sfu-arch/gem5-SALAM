@@ -357,6 +357,44 @@ void BadInstruction::initialize(llvm::Value *irval, irvmap *irmap,
   SALAM::Instruction::initialize(irval, irmap, valueList);
 }
 
+// SALAM-SpadAllocInst // ----------------------------------------------//
+SpadAllocInst::SpadAllocInst(uint64_t id, gem5::SimObject * owner, bool dbg,
+                               uint64_t OpCode,
+              uint64_t cycles,
+              uint64_t fu) :
+                               Instruction(id, owner, dbg, OpCode, cycles,fu)
+{
+    std::vector<uint64_t> base_params;
+    base_params.push_back(id);
+    base_params.push_back(OpCode);
+    base_params.push_back(cycles);
+    conditions.push_back(base_params);
+}
+
+std::shared_ptr<SALAM::Instruction>
+createSpadAllocInst(uint64_t id, gem5::SimObject * owner, bool dbg,
+              uint64_t OpCode,
+              uint64_t cycles,
+              uint64_t fu)
+{
+    return std::make_shared<SALAM::SpadAllocInst>(id, owner, dbg, OpCode, cycles, fu);
+}
+
+void
+SpadAllocInst::initialize(llvm::Value * irval,
+                           irvmap * irmap,
+                           SALAM::valueListTy * valueList)
+{
+    llvm::Instruction *inst = llvm::dyn_cast<llvm::Instruction>(irval);
+    auto *N = inst->getMetadata("size");
+    auto *S = llvm::dyn_cast<llvm::MDString>(N->getOperand(0));
+    alloc_size_ = std::stoi(S->getString().str());
+    SALAM::Instruction::initialize(irval, irmap, valueList);
+    std::cerr << "Initialized SpadAllocInst. Size = " << alloc_size_ << "\n";
+}
+
+void // Debugging Interface
+SpadAllocInst::dumper() {}
 
 // SALAM-BarrierInstruction // ----------------------------------------------//
 BarrierInstruction::BarrierInstruction(uint64_t id, gem5::SimObject * owner, bool dbg,

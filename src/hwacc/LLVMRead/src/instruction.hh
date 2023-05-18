@@ -85,6 +85,7 @@ class Instruction : public Value
         void linkOperands(const SALAM::Operand &newOp);
         std::vector<SALAM::Operand> * getOperands() { return &operands; }
         uint64_t getFunctionalUnit() { return functional_unit; }
+        virtual bool isSpadAlloc() { return false; }
         virtual bool isBarrier() { return false; }
         virtual bool isReturn() { return false; }
         virtual bool isTerminator() { return false; }
@@ -183,6 +184,47 @@ class Ret : public Instruction {
 
 std::shared_ptr<SALAM::Instruction>
 createRetInst(uint64_t id, gem5::SimObject * owner, bool dbg,
+              uint64_t OpCode,
+              uint64_t cycles,
+              uint64_t fu);
+
+// SALAM-SpadAlloc // ---------------------------------------------------------//
+// Allocates SPM for the layer. If the layer doesn't fit in SPM, it moves the SPM
+// state to the DRAM and then performs the allocation.
+class SpadAllocInst : public Instruction {
+public:
+  SpadAllocInst(uint64_t id, gem5::SimObject * owner, bool dbg,
+            uint64_t OpCode,
+              uint64_t cycles,
+              uint64_t fu);
+  ~SpadAllocInst() = default;
+	void initialize (llvm::Value * irval,
+																irvmap * irmap,
+																SALAM::valueListTy * valueList);
+  bool isSpadAlloc() override { return true; }
+  bool launch() override { return true; }
+  void compute() override { };
+
+	size_t getMemReqSize() { return size; }
+	uint64_t getCycleCount() { return conditions.at(0).at(2); }
+	void dump() { if (dbgr->enabled()) { dumper(); inst_dbg->dumper(static_cast<SALAM::Instruction*>(this));}}
+	void dumper();
+  std::shared_ptr<SALAM::SpadAllocInst> clone() const {
+    return std::static_pointer_cast<SALAM::SpadAllocInst>(createClone());
+  }
+  virtual std::shared_ptr<SALAM::Value> createClone() const override { return std::shared_ptr<SALAM::SpadAllocInst>(new SALAM::SpadAllocInst(*this)); }
+
+  size_t getAllocSize() const { return alloc_size_; }
+  
+private:
+	std::vector< std::vector<uint64_t> > conditions;
+	SALAM::Debugger *dbgr;
+	uint64_t currentCycle;
+    size_t alloc_size_ = 1;
+};
+
+std::shared_ptr<SALAM::Instruction>
+createSpadAllocInst(uint64_t id, gem5::SimObject * owner, bool dbg,
               uint64_t OpCode,
               uint64_t cycles,
               uint64_t fu);
