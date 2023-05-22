@@ -1,3 +1,9 @@
 [submodule "json"]
 	path = ext/json
 	url = https://github.com/nlohmann/json.git
+[submodule "Enzyme"]
+	path = Enzyme
+	url = https://github.com/sfu-arch/Enzyme.git
+[submodule "TapeFlowCompiler"]
+	path = TapeFlowCompiler
+	url = https://github.com/sfu-arch/TapeFlowCompiler.git

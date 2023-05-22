@@ -131,26 +131,9 @@ reverse_mem_access = (reverse_l2_cache_misses if L2_EN else reverse_cluster_cach
 fw_mem_bytes = forward_mem_access * 8 * 8
 rev_mem_bytes = reverse_mem_access * 8 * 8
 
-# print("benchmark,cache_size,fw_cluster_cache_hits,fw_cluster_cache_misses,fw_cluster_total,rev_cluster_cache_hits,rev_cluster_cache_misses,rev_cluster_total,fw_dram_access,rev_dram_access,total_dram_access,fw_cycles,rev_cycles,total_cycles,fw_bw(MB),rev_bw(MB),total_bw(MB),bin_zero_read_count,bin_zero_bw(MB)")
-
-# print(forward_cluster_cache_access, forward_cluster_cache_misses, forward_cluster_cache_hits)
-# print(forward_l2_cache_access, forward_l2_cache_misses, forward_l2_cache_hits)
-# print(reverse_cluster_cache_access, reverse_cluster_cache_misses, reverse_cluster_cache_hits)
-# print(reverse_l2_cache_access, reverse_l2_cache_misses, reverse_l2_cache_hits)
-# print(forward_cycle_count, total_cycle_count - forward_cycle_count)
-# print(fw_mem_bytes, rev_mem_bytes)
-# print('read_count:', read_count)
 if 'ad' in benchmark_name:
-    # pure: reverse doens't have any access to cluster cache
-    print("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(benchmark_name+'_pure', cache_size,
-            forward_cluster_cache_hits, forward_cluster_cache_misses, forward_cluster_cache_access,
-            0, 0, 0,
-            forward_cluster_cache_misses, ad_pure_dram_read_reqs, forward_cluster_cache_misses + ad_pure_dram_read_reqs,
-            forward_cycle_count, reverse_cycle_count, total_cycle_count,\
-            round(fw_mem_bytes/forward_runtime, 1), round(ad_pure_dram_read_reqs*8*8/reverse_runtime, 1), round((fw_mem_bytes + ad_pure_dram_read_reqs*8*8)/runtime, 1),\
-            read_count, round(read_count/runtime, 1)))
     rev_mem_bytes += ad_pure_dram_read_reqs*8*8
-    print("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(benchmark_name+'_total', cache_size,
+    print("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(benchmark_name, cache_size,
             forward_cluster_cache_hits, forward_cluster_cache_misses, forward_cluster_cache_access,
             reverse_cluster_cache_hits, reverse_cluster_cache_misses, reverse_cluster_cache_access,
             forward_cluster_cache_misses, reverse_cluster_cache_misses+ad_pure_dram_read_reqs, forward_cluster_cache_misses + reverse_cluster_cache_misses + ad_pure_dram_read_reqs,
@@ -159,15 +142,7 @@ if 'ad' in benchmark_name:
             read_count, round(read_count/runtime, 1)))
 else:
     rev_total_dram_access = max(reverse_cluster_cache_misses - ad_rev_extra_accesses, 0)
-    print("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(benchmark_name+'_pure', cache_size,
-            forward_cluster_cache_hits, forward_cluster_cache_misses, forward_cluster_cache_access,
-            reverse_cluster_cache_hits, reverse_cluster_cache_misses, reverse_cluster_cache_access,
-            forward_cluster_cache_misses, rev_total_dram_access, forward_cluster_cache_misses + rev_total_dram_access,
-            forward_cycle_count, reverse_cycle_count, total_cycle_count,\
-            round(fw_mem_bytes/forward_runtime, 1), round(rev_total_dram_access*8*8/reverse_runtime, 1), round((fw_mem_bytes + rev_total_dram_access*8*8)/runtime, 1),\
-            read_count, round(read_count/runtime, 1)))
-
-    print("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(benchmark_name+'_total', cache_size,
+    print("{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}".format(benchmark_name, cache_size,
             forward_cluster_cache_hits, forward_cluster_cache_misses, forward_cluster_cache_access,
             reverse_cluster_cache_hits, reverse_cluster_cache_misses, reverse_cluster_cache_access,
             forward_cluster_cache_misses, reverse_cluster_cache_misses, forward_cluster_cache_misses + reverse_cluster_cache_misses,
