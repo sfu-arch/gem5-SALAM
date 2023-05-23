@@ -1,6 +1,6 @@
 ---
 acc_cluster:
-  - Name: somier_clstr
+  - Name: acc_clstr
   - DMA:
     - Name: dma
       MaxReqSize: 64
@@ -10,8 +10,8 @@ acc_cluster:
       InterruptNum: 95
   - Accelerator:
     - Name: Top
-      IrPath: benchmarks/AD/somier/hw/top.ll
-      ConfigPath: benchmarks/AD/somier/hw/top.ini
+      IrPath: benchmarks/AD/template/hw/top.ll
+      ConfigPath: benchmarks/AD/template/hw/top.ini
       PIOSize: 25
       InterruptNum: 68
       PIOMaster: LocalBus
@@ -19,9 +19,9 @@ acc_cluster:
       LocalSlaves: LocalBus
       Debug: False
   - Accelerator:
-    - Name: somier
-      IrPath: benchmarks/AD/somier/hw/somier.ll
-      ConfigPath: benchmarks/AD/somier/hw/somier.ini
+    - Name: ACC
+      IrPath: benchmarks/AD/template/hw/acc.ll
+      ConfigPath: benchmarks/AD/template/hw/acc.ini
       Debug: False
       PIOSize: 1
       PIOMaster: LocalBus
@@ -33,7 +33,7 @@ acc_cluster:
         Ports: 2
 hw_config:
   top:
-  somier:
+  acc:
     instructions:
       add:
         functional_unit: 1

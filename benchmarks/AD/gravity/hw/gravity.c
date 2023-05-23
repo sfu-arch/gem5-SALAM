@@ -33,11 +33,6 @@ double ComputeU(double *x) {
             u *= -1.0 / (r + 0.001);
         }
     }
-    // for (int i = 0; i < N/2; i++) {
-    //     for (int j=i+1; j < N/2; j++) {
-    //         u *= -u * x[i];
-    //     }
-    // }
     return u;
 }
 
